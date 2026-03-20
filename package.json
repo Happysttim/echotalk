@@ -1,0 +1,32 @@
+{
+  "name": "echotalk",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "keywords": [],
+  "engines": {
+    "node": "22.19.0",
+    "pnpm": "9.4.0"
+  },
+  "author": "happysttim",
+  "license": "MIT",
+  "packageManager": "pnpm@9.4.0",
+  "devDependencies": {
+    "@types/node": "^25.3.1",
+    "prettier": "^3.8.1",
+    "turbo": "^2.8.20",
+    "typescript": "^5.9.3"
+  }
+}
