@@ -10,7 +10,7 @@ import (
 )
 
 type UserRepository interface {
-	Create(user *model.User) (*model.User, error)
+	Create(user *model.CreateUserRequest) (*model.User, error)
 	FindByID(id string) (*model.User, error)
 	Delete(id string) error
 	FindAll() ([]*model.User, error)
@@ -20,7 +20,7 @@ type MongoUserRepository struct {
 	collection *mongo.Collection
 }
 
-func NewMongoUserRepository(collection *mongo.Collection) *MongoUserRepository {
+func NewMongoUserRepository(collection *mongo.Collection) UserRepository {
 	return &MongoUserRepository{collection: collection}
 }
 
