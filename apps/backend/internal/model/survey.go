@@ -11,6 +11,7 @@ type Answer struct {
 	Author    User          `json:"author" bson:"author"`
 	Content   string        `json:"content" bson:"content"`
 	CreatedAt time.Time     `json:"created_at" bson:"created_at"`
+	UpdatedAt time.Time     `json:"updated_at" bson:"updated_at"`
 }
 
 type Survey struct {
@@ -29,8 +30,20 @@ type CreateSurveyRequest struct {
 	Author  string `json:"author" binding:"required"`
 }
 
+type UpdateSurveyRequest struct {
+	SurveyID string `json:"survey_id" binding:"required"`
+	Title    string `json:"title" binding:"required"`
+	Content  string `json:"content" binding:"required"`
+}
+
 type CreateAnswerRequest struct {
 	SurveyID string `json:"survey_id" binding:"required"`
 	Author   string `json:"author" binding:"required"`
+	Content  string `json:"content" binding:"required"`
+}
+
+type UpdateAnswerRequest struct {
+	SurveyID string `json:"survey_id" binding:"required"`
+	AnswerID string `json:"answer_id" binding:"required"`
 	Content  string `json:"content" binding:"required"`
 }
