@@ -3,14 +3,13 @@ package repositories
 import (
 	"context"
 	"echotalk/internal/model"
-	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 type UserRepository interface {
-	Create(user *model.CreateUserRequest) (*model.User, error)
+	Create(user *model.User) (*model.User, error)
 	FindByID(id string) (*model.User, error)
 	Delete(id string) error
 	FindAll() ([]*model.User, error)
@@ -24,24 +23,17 @@ func NewMongoUserRepository(collection *mongo.Collection) UserRepository {
 	return &MongoUserRepository{collection: collection}
 }
 
-func (r *MongoUserRepository) Create(user *model.CreateUserRequest) (*model.User, error) {
-	ID := bson.NewObjectID()
-
-	doc := model.User{
-		ID:        ID,
-		GoogleID:  user.GoogleID,
-		Email:     user.Email,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
+func (r *MongoUserRepository) Create(user *model.User) (*model.User, error) {
 
 	ctx := context.Background()
-	result, err := r.collection.InsertOne(ctx, doc)
+	result, err := r.collection.InsertOne(ctx, user)
 	if err != nil {
 		return nil, err
 	}
+
+	doc := user
 	doc.ID = result.InsertedID.(bson.ObjectID)
-	return &doc, nil
+	return doc, nil
 }
 
 func (r *MongoUserRepository) FindByID(id string) (*model.User, error) {

@@ -13,11 +13,16 @@ type config struct {
 	GoogleClientID     string
 	GoogleClientSecret string
 	RedirectURL        string
+	SecretKey          string
 }
 
 var Config *config
 
 func init() {
+	if Config != nil {
+		return
+	}
+
 	if err := godotenv.Load(".env"); err != nil {
 		panic("failed to load .env file: " + err.Error())
 	}
@@ -33,5 +38,6 @@ func init() {
 		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
 		RedirectURL:        os.Getenv("REDIRECT_URL"),
+		SecretKey:          os.Getenv("SECRET_KEY"),
 	}
 }

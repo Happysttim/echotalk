@@ -1,4 +1,4 @@
-package service
+package auth
 
 import (
 	"bytes"
@@ -16,7 +16,15 @@ type GoogleOAuthPayload struct {
 	RedirectURI  string `json:"redirect_uri"`
 }
 
-func GoogleToken(code string) (map[string]interface{}, error) {
+type GoogleTokenResponse struct {
+	AccessToken string `json:"access_token"`
+	ExpiresIn   int    `json:"expires_in"`
+	Scope       string `json:"scope"`
+	TokenType   string `json:"token_type"`
+	IdToken     string `json:"id_token"`
+}
+
+func GoogleToken(code string) (*GoogleTokenResponse, error) {
 	config := config.Config
 
 	payload := GoogleOAuthPayload{
@@ -42,12 +50,13 @@ func GoogleToken(code string) (map[string]interface{}, error) {
 	req.Header.Set("Content-Type", "application/json")
 	response, err := client.Do(req)
 
-	defer response.Body.Close()
 	if err != nil {
 		return nil, err
 	}
 
-	var tokenResponse map[string]interface{}
+	defer response.Body.Close()
+
+	var tokenResponse *GoogleTokenResponse
 	if err := json.NewDecoder(response.Body).Decode(&tokenResponse); err != nil {
 		return nil, err
 	}
