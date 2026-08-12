@@ -1,21 +1,44 @@
 package auth
 
 import (
-	"errors"
 	"time"
 
 	"echotalk/internal/config"
+	"echotalk/internal/errors"
 	"echotalk/internal/model"
 
 	"github.com/golang-jwt/jwt/v5"
 )
+
+type JWTToken struct {
+	AccessToken  string
+	RefreshToken string
+}
+
+func CreateToken(userID string) (*JWTToken, error) {
+	accessToken, accessTokenErr := CreateAccessToken(userID)
+	refreshToken, refreshTokenErr := CreateRefreshToken(userID)
+
+	if accessTokenErr != nil {
+		return nil, errors.ErrCreateAccessToken
+	}
+
+	if refreshTokenErr != nil {
+		return nil, errors.ErrCreateRefreshToken
+	}
+
+	return &JWTToken{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
+}
 
 func CreateAccessToken(userID string) (string, error) {
 	config := config.Config
 	secretKey := []byte(config.SecretKey)
 
 	if len(secretKey) == 0 {
-		return "", errors.New("secret key is not set in the configuration")
+		return "", errors.ErrConfigSecretKey
 	}
 
 	now := time.Now()
@@ -25,7 +48,7 @@ func CreateAccessToken(userID string) (string, error) {
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "echotalk-auth",
 			Subject:   userID,
-			ExpiresAt: jwt.NewNumericDate(now.Add(15 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(now.Add(30 * time.Minute)),
 			IssuedAt:  jwt.NewNumericDate(now),
 		},
 	}
@@ -35,7 +58,12 @@ func CreateAccessToken(userID string) (string, error) {
 		accessClaims,
 	)
 
-	return token.SignedString(token)
+	tokenString, err := token.SignedString(token)
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
 }
 
 func CreateRefreshToken(userID string) (string, error) {
@@ -43,7 +71,7 @@ func CreateRefreshToken(userID string) (string, error) {
 	secretKey := []byte(config.SecretKey)
 
 	if len(secretKey) == 0 {
-		return "", errors.New("secret key is not set in the configuration")
+		return "", errors.ErrConfigSecretKey
 	}
 
 	now := time.Now()
@@ -63,7 +91,12 @@ func CreateRefreshToken(userID string) (string, error) {
 		refreshClaims,
 	)
 
-	return token.SignedString(secretKey)
+	tokenString, err := token.SignedString(token)
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
 }
 
 func ParseAccessToken(tokenString string) (*model.AccessTokenClaims, error) {
@@ -82,12 +115,12 @@ func ParseAccessToken(tokenString string) (*model.AccessTokenClaims, error) {
 	}
 
 	if !token.Valid {
-		return nil, errors.New("invalid token")
+		return nil, errors.ErrInvalidToken
 	}
 
 	claims = token.Claims.(*model.AccessTokenClaims)
 	if claims.TokenType != "access" {
-		return nil, errors.New("invalid token type")
+		return nil, errors.ErrInvalidTokenType
 	}
 	return claims, nil
 }
@@ -108,12 +141,12 @@ func ParseRefreshToken(tokenString string) (*model.RefreshTokenClaims, error) {
 	}
 
 	if !token.Valid {
-		return nil, errors.New("invalid token")
+		return nil, errors.ErrInvalidToken
 	}
 
 	claims = token.Claims.(*model.RefreshTokenClaims)
 	if claims.TokenType != "refresh" {
-		return nil, errors.New("invalid token type")
+		return nil, errors.ErrInvalidTokenType
 	}
 	return claims, nil
 }

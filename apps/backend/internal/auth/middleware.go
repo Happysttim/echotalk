@@ -8,11 +8,6 @@ import (
 
 func AuthRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if _, exists := c.Get("userID"); exists {
-			c.Next()
-			return
-		}
-
 		authorized := c.GetHeader("Authorization")
 		tokenString := extractAuthorized(authorized)
 

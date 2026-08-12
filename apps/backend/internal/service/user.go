@@ -1,11 +1,10 @@
 package service
 
 import (
-	"echotalk/internal/auth"
+	"context"
 	"echotalk/internal/errors"
 	"echotalk/internal/model"
 	"echotalk/internal/repositories"
-	"echotalk/internal/utils"
 	"time"
 )
 
@@ -19,56 +18,20 @@ func NewUserService(userRepo *repositories.MongoUserRepository) *UserService {
 	}
 }
 
-func (s *UserService) CreateUser(payload *model.CreateUserRequest) (*model.User, error) {
-	if payload == nil {
-		return nil, errors.ErrInvalidUser
-	}
-
-	if payload.Email == "" {
-		return nil, errors.ErrInvalidInput
-	}
-
-	if payload.AuthProvider == "" {
-		return nil, errors.ErrInvalidProvider
-	}
-
-	if (payload.AuthProvider == model.AuthProviderGoogle && payload.Code == "") || (payload.AuthProvider == model.AuthProviderLocal && payload.Password == "") {
-		return nil, errors.ErrInvalidInput
-	}
-
+func (s *UserService) CreateUser(ctx context.Context, payload *model.CreateUserCommand) (*model.User, error) {
 	var user *model.User
+	now := time.Now()
 
-	switch payload.AuthProvider {
-	case model.AuthProviderLocal:
-		hashedPassword, err := utils.HashPassword(payload.Password)
-		if err != nil {
-			return nil, err
-		}
-		user = &model.User{
-			AuthProvider: model.AuthProviderLocal,
-			Email:        payload.Email,
-			PasswordHash: hashedPassword,
-		}
-	case model.AuthProviderGoogle:
-		tokenResponse, err := auth.GoogleToken(payload.Code)
-		if err != nil {
-			return nil, err
-		}
-
-		user = &model.User{
-			AuthProvider: model.AuthProviderGoogle,
-			ProviderID:   tokenResponse.AccessToken,
-			Email:        payload.Email,
-		}
-	default:
-		return nil, errors.ErrInvalidProvider
+	user = &model.User{
+		AuthProvider: payload.AuthProvider,
+		Email:        payload.Email,
+		ProviderID:   payload.ProviderID,
+		PasswordHash: payload.PasswordHash,
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 
-	now := time.Now()
-	user.CreatedAt = now
-	user.UpdatedAt = now
-
-	result, err := s.userRepo.Create(user)
+	result, err := s.userRepo.Create(ctx, user)
 	if err != nil {
 		return nil, err
 	}
@@ -76,32 +39,71 @@ func (s *UserService) CreateUser(payload *model.CreateUserRequest) (*model.User,
 	return result, nil
 }
 
-func (s *UserService) GetUserByID(id string) (*model.User, error) {
+func (s *UserService) GetUserByID(ctx context.Context, id string) (*model.User, error) {
 	if id == "" {
 		return nil, errors.ErrInvalidInput
 	}
-	user, err := s.userRepo.FindByID(id)
+	user, err := s.userRepo.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	return user, nil
 }
 
-func (s *UserService) DeleteUser(id string) error {
+func (s *UserService) DeleteUser(ctx context.Context, id string) error {
 	if id == "" {
 		return errors.ErrInvalidInput
 	}
-	err := s.userRepo.Delete(id)
+	err := s.userRepo.Delete(ctx, id)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *UserService) GetAllUsers() ([]*model.User, error) {
-	users, err := s.userRepo.FindAll()
+func (s *UserService) GetAllUsers(ctx context.Context) ([]*model.User, error) {
+	users, err := s.userRepo.FindAll(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return users, nil
+}
+
+func (s *UserService) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
+	if email == "" {
+		return nil, errors.ErrInvalidInput
+	}
+
+	user, err := s.userRepo.FindByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (s *UserService) GetUserByProvider(ctx context.Context, authProvider model.AuthProvider, providerID string) (*model.User, error) {
+	if !authProvider.IsValid() || providerID == "" {
+		return nil, errors.ErrInvalidInput
+	}
+
+	user, err := s.userRepo.FindByProvider(ctx, authProvider, providerID)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (s *UserService) GetUserByLocal(ctx context.Context, email string, passwordHash string) (*model.User, error) {
+	if email == "" || passwordHash == "" {
+		return nil, errors.ErrInvalidInput
+	}
+
+	user, err := s.userRepo.FindByLocal(ctx, email, passwordHash)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }

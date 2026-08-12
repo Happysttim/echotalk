@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"echotalk/internal/errors"
 	"echotalk/internal/model"
 	"echotalk/internal/repositories"
@@ -17,7 +18,7 @@ func NewAnswerService(answerRepo *repositories.MongoAnswerRepository) *AnswerSer
 	}
 }
 
-func (s *AnswerService) CreateAnswer(payload *model.CreateAnswerRequest, author *model.User) (*model.Answer, error) {
+func (s *AnswerService) CreateAnswer(ctx context.Context, payload *model.CreateAnswerRequest, author *model.User) (*model.Answer, error) {
 	if payload == nil {
 		return nil, errors.ErrInvalidAnswer
 	}
@@ -41,22 +42,22 @@ func (s *AnswerService) CreateAnswer(payload *model.CreateAnswerRequest, author 
 		UpdatedAt: time.Now(),
 	}
 
-	return s.answerRepo.Create(doc)
+	return s.answerRepo.Create(ctx, doc)
 }
 
-func (s *AnswerService) GetAnswerByID(answerID string) (*model.Answer, error) {
+func (s *AnswerService) GetAnswerByID(ctx context.Context, answerID string) (*model.Answer, error) {
 	if answerID == "" {
 		return nil, errors.ErrInvalidInput
 	}
 
-	answer, err := s.answerRepo.FindByID(answerID)
+	answer, err := s.answerRepo.FindByID(ctx, answerID)
 	if err != nil {
 		return nil, err
 	}
 	return answer, nil
 }
 
-func (s *AnswerService) UpdateAnswer(payload *model.UpdateAnswerRequest) error {
+func (s *AnswerService) UpdateAnswer(ctx context.Context, payload *model.UpdateAnswerRequest) error {
 	if payload == nil {
 		return errors.ErrInvalidAnswer
 	}
@@ -73,7 +74,7 @@ func (s *AnswerService) UpdateAnswer(payload *model.UpdateAnswerRequest) error {
 		return errors.ErrSurveyNotFound
 	}
 
-	answer, err := s.answerRepo.FindByID(payload.AnswerID)
+	answer, err := s.answerRepo.FindByID(ctx, payload.AnswerID)
 	if err != nil {
 		return err
 	}
@@ -81,15 +82,15 @@ func (s *AnswerService) UpdateAnswer(payload *model.UpdateAnswerRequest) error {
 	answer.Content = payload.Content
 	answer.UpdatedAt = time.Now()
 
-	return s.answerRepo.Update(answer)
+	return s.answerRepo.Update(ctx, answer)
 }
 
-func (s *AnswerService) DeleteAnswer(answerID string) error {
+func (s *AnswerService) DeleteAnswer(ctx context.Context, answerID string) error {
 	if answerID == "" {
 		return errors.ErrInvalidInput
 	}
 
-	answer, err := s.answerRepo.FindByID(answerID)
+	answer, err := s.answerRepo.FindByID(ctx, answerID)
 	if err != nil {
 		return err
 	}
@@ -98,5 +99,5 @@ func (s *AnswerService) DeleteAnswer(answerID string) error {
 		return errors.ErrAnswerNotFound
 	}
 
-	return s.answerRepo.Delete(answerID)
+	return s.answerRepo.Delete(ctx, answerID)
 }

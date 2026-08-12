@@ -12,7 +12,7 @@ type config struct {
 	Port               int16
 	GoogleClientID     string
 	GoogleClientSecret string
-	RedirectURL        string
+	GoogleRedirectURL  string
 	SecretKey          string
 }
 
@@ -37,7 +37,7 @@ func init() {
 		Port:               int16(port),
 		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
-		RedirectURL:        os.Getenv("REDIRECT_URL"),
+		GoogleRedirectURL:  os.Getenv("GOOGLE_REDIRECT_URL"),
 		SecretKey:          os.Getenv("SECRET_KEY"),
 	}
 }

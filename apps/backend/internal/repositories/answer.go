@@ -3,17 +3,18 @@ package repositories
 import (
 	"context"
 	"echotalk/internal/model"
+	"errors"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 type AnswerRepository interface {
-	Create(answer *model.Answer) (*model.Answer, error)
-	Update(answer *model.Answer) error
-	FindByID(id string) (*model.Answer, error)
-	Delete(id string) error
-	FindAll() ([]*model.Answer, error)
+	Create(ctx context.Context, answer *model.Answer) (*model.Answer, error)
+	Update(ctx context.Context, answer *model.Answer) error
+	FindByID(ctx context.Context, id string) (*model.Answer, error)
+	Delete(ctx context.Context, id string) error
+	FindAll(ctx context.Context) ([]*model.Answer, error)
 }
 
 type MongoAnswerRepository struct {
@@ -24,10 +25,12 @@ func NewMongoAnswerRepository(collection *mongo.Collection) AnswerRepository {
 	return &MongoAnswerRepository{collection: collection}
 }
 
-func (r *MongoAnswerRepository) Create(answer *model.Answer) (*model.Answer, error) {
-	ctx := context.Background()
+func (r *MongoAnswerRepository) Create(ctx context.Context, answer *model.Answer) (*model.Answer, error) {
 	result, err := r.collection.InsertOne(ctx, answer)
 	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -36,8 +39,7 @@ func (r *MongoAnswerRepository) Create(answer *model.Answer) (*model.Answer, err
 	return &doc, nil
 }
 
-func (r *MongoAnswerRepository) Update(answer *model.Answer) error {
-	ctx := context.Background()
+func (r *MongoAnswerRepository) Update(ctx context.Context, answer *model.Answer) error {
 	_, err := r.collection.UpdateOne(ctx, bson.M{"_id": answer.ID}, bson.M{"$set": answer})
 	if err != nil {
 		return err
@@ -46,13 +48,15 @@ func (r *MongoAnswerRepository) Update(answer *model.Answer) error {
 	return nil
 }
 
-func (r *MongoAnswerRepository) FindByID(id string) (*model.Answer, error) {
+func (r *MongoAnswerRepository) FindByID(ctx context.Context, id string) (*model.Answer, error) {
 	objectID, err := bson.ObjectIDFromHex(id)
 	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, nil
+		}
 		return nil, err
 	}
 
-	ctx := context.Background()
 	var answer model.Answer
 
 	if err := r.collection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&answer); err != nil {
@@ -62,22 +66,23 @@ func (r *MongoAnswerRepository) FindByID(id string) (*model.Answer, error) {
 	return &answer, nil
 }
 
-func (r *MongoAnswerRepository) Delete(id string) error {
+func (r *MongoAnswerRepository) Delete(ctx context.Context, id string) error {
 	objectID, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		return err
 	}
 
-	ctx := context.Background()
 	_, err = r.collection.DeleteOne(ctx, bson.M{"_id": objectID})
 	return err
 }
 
-func (r *MongoAnswerRepository) FindAll() ([]*model.Answer, error) {
-	ctx := context.Background()
+func (r *MongoAnswerRepository) FindAll(ctx context.Context) ([]*model.Answer, error) {
 	cursor, err := r.collection.Find(ctx, bson.M{})
 
 	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, nil
+		}
 		return nil, err
 	}
 

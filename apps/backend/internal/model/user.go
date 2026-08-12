@@ -13,6 +13,15 @@ const (
 	AuthProviderGoogle AuthProvider = "google"
 )
 
+func (provider AuthProvider) IsValid() bool {
+	switch provider {
+	case AuthProviderGoogle, AuthProviderLocal:
+		return true
+	default:
+		return false
+	}
+}
+
 type User struct {
 	ID           bson.ObjectID `bson:"_id,omitempty"`
 	AuthProvider AuthProvider  `bson:"auth_provider"`
@@ -23,9 +32,18 @@ type User struct {
 	UpdatedAt    time.Time     `bson:"updated_at"`
 }
 
-type CreateUserRequest struct {
-	AuthProvider AuthProvider `json:"auth_provider" binding:"required"`
-	Email        string       `json:"email" binding:"required,email"`
-	Password     string       `json:"password"`
-	Code         string       `json:"code"`
+type LocalAuthRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,email"`
+}
+
+type GoogleAuthRequest struct {
+	Code string `json:"code" binding:"required"`
+}
+
+type CreateUserCommand struct {
+	AuthProvider AuthProvider
+	ProviderID   string
+	Email        string
+	PasswordHash string
 }

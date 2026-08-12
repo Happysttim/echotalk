@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"echotalk/internal/errors"
 	"echotalk/internal/model"
 	"echotalk/internal/repositories"
@@ -31,7 +32,7 @@ func NewSurveyService(surveyRepo *repositories.MongoSurveyRepository) *SurveySer
 	}
 }
 
-func (s *SurveyService) CreateSurvey(payload *model.CreateSurveyRequest, author *model.User) (*model.Survey, error) {
+func (s *SurveyService) CreateSurvey(ctx context.Context, payload *model.CreateSurveyRequest, author *model.User) (*model.Survey, error) {
 	if payload == nil {
 		return nil, errors.ErrInvalidSurvey
 	}
@@ -49,14 +50,14 @@ func (s *SurveyService) CreateSurvey(payload *model.CreateSurveyRequest, author 
 		Content: payload.Content,
 		Author:  author,
 	}
-	return s.surveyRepo.Create(doc)
+	return s.surveyRepo.Create(ctx, doc)
 }
 
-func (s *SurveyService) GetSurveyByID(surveyID string) (*model.Survey, error) {
+func (s *SurveyService) GetSurveyByID(ctx context.Context, surveyID string) (*model.Survey, error) {
 	if surveyID == "" {
 		return nil, errors.ErrInvalidInput
 	}
-	survey, err := s.surveyRepo.FindByID(surveyID)
+	survey, err := s.surveyRepo.FindByID(ctx, surveyID)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +68,7 @@ func (s *SurveyService) GetSurveyByID(surveyID string) (*model.Survey, error) {
 	return survey, nil
 }
 
-func (s *SurveyService) GetFilteredSurveys(filter SurveyFilter) ([]*model.Survey, error) {
+func (s *SurveyService) GetFilteredSurveys(ctx context.Context, filter SurveyFilter) ([]*model.Survey, error) {
 	if filter == nil {
 		return nil, errors.ErrInvalidInput
 	}
@@ -83,14 +84,14 @@ func (s *SurveyService) GetFilteredSurveys(filter SurveyFilter) ([]*model.Survey
 		return nil, errors.ErrInvalidInput
 	}
 
-	return s.surveyRepo.FindByFilter(m)
+	return s.surveyRepo.FindByFilter(ctx, m)
 }
 
-func (s *SurveyService) GetAllSurveys() ([]*model.Survey, error) {
-	return s.surveyRepo.FindAll()
+func (s *SurveyService) GetAllSurveys(ctx context.Context) ([]*model.Survey, error) {
+	return s.surveyRepo.FindAll(ctx)
 }
 
-func (s *SurveyService) UpdateSurvey(payload *model.UpdateSurveyRequest) error {
+func (s *SurveyService) UpdateSurvey(ctx context.Context, payload *model.UpdateSurveyRequest) error {
 	if payload == nil {
 		return errors.ErrInvalidSurvey
 	}
@@ -99,7 +100,7 @@ func (s *SurveyService) UpdateSurvey(payload *model.UpdateSurveyRequest) error {
 		return errors.ErrInvalidInput
 	}
 
-	survey, err := s.surveyRepo.FindByID(payload.SurveyID)
+	survey, err := s.surveyRepo.FindByID(ctx, payload.SurveyID)
 	if err != nil {
 		return err
 	}
@@ -112,15 +113,15 @@ func (s *SurveyService) UpdateSurvey(payload *model.UpdateSurveyRequest) error {
 	survey.Content = payload.Content
 	survey.UpdatedAt = time.Now()
 
-	return s.surveyRepo.Update(survey)
+	return s.surveyRepo.Update(ctx, survey)
 }
 
-func (s *SurveyService) DeleteSurvey(surveyID string) error {
+func (s *SurveyService) DeleteSurvey(ctx context.Context, surveyID string) error {
 	if surveyID == "" {
 		return errors.ErrInvalidInput
 	}
 
-	survey, err := s.surveyRepo.FindByID(surveyID)
+	survey, err := s.surveyRepo.FindByID(ctx, surveyID)
 	if err != nil {
 		return err
 	}
@@ -129,5 +130,5 @@ func (s *SurveyService) DeleteSurvey(surveyID string) error {
 		return errors.ErrSurveyNotFound
 	}
 
-	return s.surveyRepo.Delete(surveyID)
+	return s.surveyRepo.Delete(ctx, surveyID)
 }
