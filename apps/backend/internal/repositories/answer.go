@@ -28,9 +28,6 @@ func NewMongoAnswerRepository(collection *mongo.Collection) AnswerRepository {
 func (r *MongoAnswerRepository) Create(ctx context.Context, answer *model.Answer) (*model.Answer, error) {
 	result, err := r.collection.InsertOne(ctx, answer)
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, nil
-		}
 		return nil, err
 	}
 
@@ -51,15 +48,15 @@ func (r *MongoAnswerRepository) Update(ctx context.Context, answer *model.Answer
 func (r *MongoAnswerRepository) FindByID(ctx context.Context, id string) (*model.Answer, error) {
 	objectID, err := bson.ObjectIDFromHex(id)
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, nil
-		}
 		return nil, err
 	}
 
 	var answer model.Answer
 
 	if err := r.collection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&answer); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -80,9 +77,6 @@ func (r *MongoAnswerRepository) FindAll(ctx context.Context) ([]*model.Answer, e
 	cursor, err := r.collection.Find(ctx, bson.M{})
 
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, nil
-		}
 		return nil, err
 	}
 

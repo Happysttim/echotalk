@@ -6,7 +6,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func HashPassword(target string) (string, error) {
+func Hash(target string) (string, error) {
 	if target == "" {
 		return "", errors.New("hash target cannot be empty")
 	}

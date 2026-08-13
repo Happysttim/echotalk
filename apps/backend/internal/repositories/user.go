@@ -58,6 +58,9 @@ func (r *MongoUserRepository) FindByID(ctx context.Context, id string) (*model.U
 func (r *MongoUserRepository) FindByEmail(ctx context.Context, email string) (*model.User, error) {
 	var user model.User
 	if err := r.collection.FindOne(ctx, bson.M{"email": email}).Decode(&user); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -101,9 +104,6 @@ func (r *MongoUserRepository) Delete(ctx context.Context, id string) error {
 func (r *MongoUserRepository) FindAll(ctx context.Context) ([]*model.User, error) {
 	cursor, err := r.collection.Find(ctx, bson.M{})
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, nil
-		}
 		return nil, err
 	}
 	defer cursor.Close(ctx)

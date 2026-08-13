@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"echotalk/internal/auth"
 	"echotalk/internal/model"
 	"echotalk/internal/service"
 	"net/http"
@@ -18,11 +19,13 @@ const (
 
 type AuthHandler struct {
 	authService *service.AuthService
+	userService *service.UserService
 }
 
-func NewAuthHandler(authService *service.AuthService) *AuthHandler {
+func NewAuthHandler(authService *service.AuthService, userService *service.UserService) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
+		userService: userService,
 	}
 }
 
@@ -87,4 +90,77 @@ func (handler *AuthHandler) LocalRegister(c *gin.Context) {
 
 	c.SetCookie(RefreshToken, response.RefreshToken, RefreshTokenMaxAge, "/", "", true, true)
 	c.JSON(http.StatusCreated, gin.H{"status": "OK", "accessToken": response.AccessToken})
+}
+
+// @Router /auth/refresh [get]
+func (handler *AuthHandler) Refresh(c *gin.Context) {
+	cookie, err := c.Request.Cookie(RefreshToken)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	refreshToken := cookie.Value
+
+	if handler.authService.IsUselessRefreshToken(ctx, refreshToken) {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "expired token error"})
+		return
+	}
+
+	claims, err := auth.ParseRefreshToken(refreshToken)
+
+	if err != nil || claims == nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid refresh token"})
+		return
+	}
+
+	userID := claims.UserID
+
+	exists, err := handler.userService.GetUserByID(ctx, userID)
+
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	if exists == nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid user data"})
+		return
+	}
+
+	jwtToken, err := auth.CreateToken(exists.ID.Hex())
+
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.SetCookie(RefreshToken, jwtToken.RefreshToken, RefreshTokenMaxAge, "/", "", true, true)
+	c.JSON(http.StatusCreated, gin.H{"status": "OK", "accessToken": jwtToken.AccessToken})
+}
+
+// @Router /auth/logout [get]
+func (handler *AuthHandler) Logout(c *gin.Context) {
+	cookie, err := c.Request.Cookie(RefreshToken)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	refreshToken := cookie.Value
+
+	if handler.authService.IsUselessRefreshToken(ctx, refreshToken) {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "expired token error"})
+		return
+	}
+
+	if err := handler.authService.Logout(ctx, refreshToken); err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.SetCookie(RefreshToken, "", -1, "/", "", true, true)
+	c.JSON(http.StatusCreated, gin.H{"status": "OK"})
 }

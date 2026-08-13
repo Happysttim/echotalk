@@ -7,8 +7,16 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const (
+	CollectionUser    = "users"
+	CollectionSession = "sessions"
+	CollectionAnswer  = "answers"
+	CollectionSurvey  = "survey"
+)
+
 type config struct {
 	MongoURI           string
+	DBName             string
 	Port               int16
 	GoogleClientID     string
 	GoogleClientSecret string
@@ -34,6 +42,7 @@ func init() {
 
 	Config = &config{
 		MongoURI:           os.Getenv("MONGODB_URI"),
+		DBName:             os.Getenv("DB_NAME"),
 		Port:               int16(port),
 		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),

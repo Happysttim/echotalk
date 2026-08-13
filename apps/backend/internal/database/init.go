@@ -2,10 +2,11 @@ package database
 
 import (
 	"context"
+	"echotalk/internal/config"
 	"errors"
-	"fmt"
 	"time"
 
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
@@ -13,18 +14,19 @@ import (
 
 const connectTimeout = 5 * time.Second
 
-func Init(ctx context.Context, uri string) (*mongo.Client, error) {
-	if uri == "" {
-		return nil, errors.New("mongodb uri is required")
+var Client *mongo.Client
+var Database *mongo.Database
+
+func init() {
+	if config.Config.MongoURI == "" {
+		panic("invalid mongouri")
 	}
 
-	if ctx == nil {
-		ctx = context.Background()
-	}
+	ctx := context.Background()
 
-	client, err := mongo.Connect(options.Client().ApplyURI(uri))
+	client, err := mongo.Connect(options.Client().ApplyURI(config.Config.MongoURI))
 	if err != nil {
-		return nil, fmt.Errorf("connect mongodb: %w", err)
+		panic("connect mongodb error:" + err.Error())
 	}
 
 	pingCtx, cancel := context.WithTimeout(ctx, connectTimeout)
@@ -32,20 +34,51 @@ func Init(ctx context.Context, uri string) (*mongo.Client, error) {
 
 	if err := client.Ping(pingCtx, readpref.Primary()); err != nil {
 		_ = client.Disconnect(context.Background())
-		return nil, fmt.Errorf("ping mongodb: %w", err)
+		panic("ping mongodb error: " + err.Error())
 	}
 
-	return client, nil
+	Client = client
 }
 
-func Close(ctx context.Context, client *mongo.Client) error {
-	if client == nil {
-		return nil
+func InitDatabase() error {
+	if Client == nil {
+		return errors.New("mongo client is nil")
 	}
 
-	if ctx == nil {
-		ctx = context.Background()
+	if config.Config.DBName == "" {
+		return errors.New("invalid mongo database name")
 	}
 
-	return client.Disconnect(ctx)
+	Database = Client.Database(config.Config.DBName)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		10*time.Second,
+	)
+
+	defer cancel()
+
+	return initSessionIndexes(ctx)
+}
+
+func initSessionIndexes(ctx context.Context) error {
+	collection := Database.Collection(config.CollectionSession)
+	_, err := collection.Indexes().CreateOne(
+		ctx,
+		mongo.IndexModel{
+			Keys: bson.D{
+				{Key: "expires_at", Value: 1},
+			},
+			Options: options.Index().SetExpireAfterSeconds(0),
+		},
+	)
+
+	return err
+}
+
+func Close() error {
+	ctx := context.Background()
+	if Client == nil {
+		panic("mongo client is nil")
+	}
+	return Client.Disconnect(ctx)
 }

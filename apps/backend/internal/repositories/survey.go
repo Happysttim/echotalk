@@ -49,14 +49,14 @@ func (r *MongoSurveyRepository) Update(ctx context.Context, survey *model.Survey
 func (r *MongoSurveyRepository) FindByID(ctx context.Context, id string) (*model.Survey, error) {
 	objectID, err := bson.ObjectIDFromHex(id)
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, nil
-		}
 		return nil, err
 	}
 
 	var survey model.Survey
 	if err := r.collection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&survey); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -76,9 +76,6 @@ func (r *MongoSurveyRepository) Delete(ctx context.Context, id string) error {
 func (r *MongoSurveyRepository) FindByFilter(ctx context.Context, filter bson.M) ([]*model.Survey, error) {
 	cursor, err := r.collection.Find(ctx, filter)
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, nil
-		}
 		return nil, err
 	}
 
@@ -96,9 +93,6 @@ func (r *MongoSurveyRepository) FindByFilter(ctx context.Context, filter bson.M)
 func (r *MongoSurveyRepository) FindAll(ctx context.Context) ([]*model.Survey, error) {
 	cursor, err := r.collection.Find(ctx, bson.M{})
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, nil
-		}
 		return nil, err
 	}
 

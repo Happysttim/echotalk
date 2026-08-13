@@ -20,6 +20,10 @@ var (
 )
 
 var (
+	ErrExpiredToken = errors.New("expired token error")
+)
+
+var (
 	ErrBadRequest = errors.New("bad request")
 )
 

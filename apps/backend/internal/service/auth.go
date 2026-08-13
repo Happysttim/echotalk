@@ -6,7 +6,9 @@ import (
 	"echotalk/internal/auth/oauth"
 	"echotalk/internal/errors"
 	"echotalk/internal/model"
+	"echotalk/internal/repositories"
 	"echotalk/internal/utils"
+	"time"
 )
 
 type LoginResponse struct {
@@ -16,12 +18,14 @@ type LoginResponse struct {
 }
 
 type AuthService struct {
+	sessionRepo  *repositories.MongoSessionRepository
 	userService  *UserService
 	googleClient *oauth.GoogleClient
 }
 
-func NewAuthService(userService *UserService) *AuthService {
+func NewAuthService(sessionRepo *repositories.MongoSessionRepository, userService *UserService) *AuthService {
 	return &AuthService{
+		sessionRepo:  sessionRepo,
 		userService:  userService,
 		googleClient: oauth.NewGoogleClient(),
 	}
@@ -43,6 +47,28 @@ func (s *AuthService) findOAuthUser(ctx context.Context, authProvider model.Auth
 	}
 
 	return user, nil
+}
+
+func (s *AuthService) createSession(ctx context.Context, refreshToken string, expiresIn time.Time) error {
+	hashedToken, err := utils.Hash(refreshToken)
+	if err != nil {
+		return err
+	}
+
+	session := model.Session{
+		RefreshTokenHash: hashedToken,
+		Revoked:          false,
+		ExpiredAt:        expiresIn,
+		CreatedAt:        time.Now(),
+	}
+
+	_, err = s.sessionRepo.Create(ctx, &session)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *AuthService) LoginWithGoogle(ctx context.Context, payload *model.GoogleAuthRequest) (*LoginResponse, error) {
@@ -85,6 +111,8 @@ func (s *AuthService) LoginWithGoogle(ctx context.Context, payload *model.Google
 		return nil, err
 	}
 
+	s.createSession(ctx, jwtToken.RefreshToken, jwtToken.RefreshTokenExpiresIn)
+
 	return &LoginResponse{
 		User:         user,
 		AccessToken:  jwtToken.AccessToken,
@@ -106,7 +134,7 @@ func (s *AuthService) RegisterWithLocal(ctx context.Context, payload *model.Loca
 		return nil, errors.ErrBadRequest
 	}
 
-	passwordHash, err := utils.HashPassword(payload.Password)
+	passwordHash, err := utils.Hash(payload.Password)
 
 	if err != nil {
 		return nil, errors.ErrInternalServer
@@ -129,6 +157,8 @@ func (s *AuthService) RegisterWithLocal(ctx context.Context, payload *model.Loca
 		return nil, err
 	}
 
+	s.createSession(ctx, jwtToken.RefreshToken, jwtToken.RefreshTokenExpiresIn)
+
 	return &LoginResponse{
 		User:         user,
 		AccessToken:  jwtToken.AccessToken,
@@ -141,7 +171,7 @@ func (s *AuthService) LoginWithLocal(ctx context.Context, payload *model.LocalAu
 		return nil, errors.ErrInvalidInput
 	}
 
-	passwordHash, err := utils.HashPassword(payload.Password)
+	passwordHash, err := utils.Hash(payload.Password)
 
 	if err != nil {
 		return nil, errors.ErrInternalServer
@@ -161,9 +191,61 @@ func (s *AuthService) LoginWithLocal(ctx context.Context, payload *model.LocalAu
 		return nil, err
 	}
 
+	s.createSession(ctx, jwtToken.RefreshToken, jwtToken.RefreshTokenExpiresIn)
+
 	return &LoginResponse{
 		User:         user,
 		AccessToken:  jwtToken.AccessToken,
 		RefreshToken: jwtToken.RefreshToken,
 	}, nil
+}
+
+func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
+	if refreshToken == "" {
+		return errors.ErrInvalidInput
+	}
+
+	hashedToken, err := utils.Hash(refreshToken)
+	if err != nil {
+		return err
+	}
+	session, err := s.sessionRepo.FindByToken(ctx, hashedToken)
+
+	if err != nil {
+		return err
+	}
+
+	if session == nil {
+		return errors.ErrInvalidToken
+	}
+
+	if session.ExpiredAt.Before(time.Now()) || session.Revoked {
+		return errors.ErrExpiredToken
+	}
+
+	session.Revoked = true
+
+	if err := s.sessionRepo.Update(ctx, session); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *AuthService) IsUselessRefreshToken(ctx context.Context, refreshToken string) bool {
+	if refreshToken == "" {
+		return true
+	}
+
+	hashedToken, err := utils.Hash(refreshToken)
+	if err != nil {
+		return true
+	}
+	session, err := s.sessionRepo.FindByToken(ctx, hashedToken)
+
+	if err != nil || session == nil {
+		return true
+	}
+
+	return session.ExpiredAt.Before(time.Now()) || session.Revoked
 }

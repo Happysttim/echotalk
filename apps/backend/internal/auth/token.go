@@ -11,13 +11,14 @@ import (
 )
 
 type JWTToken struct {
-	AccessToken  string
-	RefreshToken string
+	AccessToken           string
+	RefreshToken          string
+	RefreshTokenExpiresIn time.Time
 }
 
 func CreateToken(userID string) (*JWTToken, error) {
 	accessToken, accessTokenErr := CreateAccessToken(userID)
-	refreshToken, refreshTokenErr := CreateRefreshToken(userID)
+	refreshToken, expiresIn, refreshTokenErr := CreateRefreshToken(userID)
 
 	if accessTokenErr != nil {
 		return nil, errors.ErrCreateAccessToken
@@ -28,8 +29,9 @@ func CreateToken(userID string) (*JWTToken, error) {
 	}
 
 	return &JWTToken{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+		AccessToken:           accessToken,
+		RefreshToken:          refreshToken,
+		RefreshTokenExpiresIn: expiresIn,
 	}, nil
 }
 
@@ -48,7 +50,7 @@ func CreateAccessToken(userID string) (string, error) {
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "echotalk-auth",
 			Subject:   userID,
-			ExpiresAt: jwt.NewNumericDate(now.Add(30 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(now.Add(5 * time.Minute)),
 			IssuedAt:  jwt.NewNumericDate(now),
 		},
 	}
@@ -66,12 +68,12 @@ func CreateAccessToken(userID string) (string, error) {
 	return tokenString, nil
 }
 
-func CreateRefreshToken(userID string) (string, error) {
+func CreateRefreshToken(userID string) (string, time.Time, error) {
 	config := config.Config
 	secretKey := []byte(config.SecretKey)
 
 	if len(secretKey) == 0 {
-		return "", errors.ErrConfigSecretKey
+		return "", time.Time{}, errors.ErrConfigSecretKey
 	}
 
 	now := time.Now()
@@ -93,10 +95,10 @@ func CreateRefreshToken(userID string) (string, error) {
 
 	tokenString, err := token.SignedString(token)
 	if err != nil {
-		return "", err
+		return "", time.Time{}, err
 	}
 
-	return tokenString, nil
+	return tokenString, refreshClaims.ExpiresAt.Time, nil
 }
 
 func ParseAccessToken(tokenString string) (*model.AccessTokenClaims, error) {
