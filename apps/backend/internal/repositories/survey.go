@@ -7,6 +7,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type SurveyRepository interface {
@@ -15,7 +16,7 @@ type SurveyRepository interface {
 	Update(ctx context.Context, survey *model.Survey) error
 	Delete(ctx context.Context, id string) error
 	FindAll(ctx context.Context) ([]*model.Survey, error)
-	FindByFilter(ctx context.Context, filter bson.M) ([]*model.Survey, error)
+	FindByFilter(ctx context.Context, filter bson.M, opts ...options.Lister[options.FindOptions]) ([]*model.Survey, error)
 }
 
 type MongoSurveyRepository struct {
@@ -73,8 +74,8 @@ func (r *MongoSurveyRepository) Delete(ctx context.Context, id string) error {
 	return err
 }
 
-func (r *MongoSurveyRepository) FindByFilter(ctx context.Context, filter bson.M) ([]*model.Survey, error) {
-	cursor, err := r.collection.Find(ctx, filter)
+func (r *MongoSurveyRepository) FindByFilter(ctx context.Context, filter bson.M, opts ...options.Lister[options.FindOptions]) ([]*model.Survey, error) {
+	cursor, err := r.collection.Find(ctx, filter, opts...)
 	if err != nil {
 		return nil, err
 	}

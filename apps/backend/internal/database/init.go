@@ -57,7 +57,12 @@ func InitDatabase() error {
 
 	defer cancel()
 
-	return initSessionIndexes(ctx)
+	initSessionIndexes(ctx)
+	initSurveyIndexes(ctx)
+	initAnswerIndexes(ctx)
+	initRateUpIndexes(ctx)
+
+	return nil
 }
 
 func initSessionIndexes(ctx context.Context) error {
@@ -69,6 +74,50 @@ func initSessionIndexes(ctx context.Context) error {
 				{Key: "expires_at", Value: 1},
 			},
 			Options: options.Index().SetExpireAfterSeconds(0),
+		},
+	)
+
+	return err
+}
+
+func initSurveyIndexes(ctx context.Context) error {
+	collection := Database.Collection(config.CollectionSurvey)
+	_, err := collection.Indexes().CreateOne(
+		ctx,
+		mongo.IndexModel{
+			Keys: bson.D{
+				{Key: "updated_at", Value: -1},
+			},
+		},
+	)
+
+	return err
+}
+
+func initAnswerIndexes(ctx context.Context) error {
+	collection := Database.Collection(config.CollectionAnswer)
+	_, err := collection.Indexes().CreateOne(
+		ctx,
+		mongo.IndexModel{
+			Keys: bson.D{
+				{Key: "updated_at", Value: -1},
+			},
+		},
+	)
+
+	return err
+}
+
+func initRateUpIndexes(ctx context.Context) error {
+	collection := Database.Collection(config.CollectionRateUp)
+	_, err := collection.Indexes().CreateOne(
+		ctx,
+		mongo.IndexModel{
+			Keys: bson.D{
+				{Key: "answer_id", Value: 1},
+				{Key: "user_id", Value: 1},
+			},
+			Options: options.Index().SetUnique(true),
 		},
 	)
 

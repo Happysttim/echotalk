@@ -6,15 +6,19 @@ import (
 	"echotalk/internal/model"
 	"echotalk/internal/repositories"
 	"time"
+
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type AnswerService struct {
 	answerRepo *repositories.MongoAnswerRepository
+	rateUpRepo *repositories.MongoRateUpRepository
 }
 
-func NewAnswerService(answerRepo *repositories.MongoAnswerRepository) *AnswerService {
+func NewAnswerService(answerRepo *repositories.MongoAnswerRepository, rateUpRepo *repositories.MongoRateUpRepository) *AnswerService {
 	return &AnswerService{
 		answerRepo: answerRepo,
+		rateUpRepo: rateUpRepo,
 	}
 }
 
@@ -62,26 +66,45 @@ func (s *AnswerService) UpdateAnswer(ctx context.Context, payload *model.UpdateA
 		return errors.ErrInvalidAnswer
 	}
 
-	if payload.Content == "" {
-		return errors.ErrInvalidInput
-	}
-
-	if payload.AnswerID == "" {
-		return errors.ErrAnswerNotFound
-	}
-
-	if payload.SurveyID == "" {
-		return errors.ErrSurveyNotFound
-	}
-
 	answer, err := s.answerRepo.FindByID(ctx, payload.AnswerID)
 	if err != nil {
 		return err
 	}
 
+	if answer == nil {
+		return errors.ErrInvalidAnswer
+	}
+
 	answer.Content = payload.Content
 	answer.UpdatedAt = time.Now()
 
+	return s.answerRepo.Update(ctx, answer)
+}
+
+func (s *AnswerService) RateUp(ctx context.Context, answerID string, userID bson.ObjectID) error {
+	if answerID == "" {
+		return errors.ErrInvalidInput
+	}
+
+	answer, err := s.answerRepo.FindByID(ctx, answerID)
+	if err != nil {
+		return err
+	}
+
+	if answer == nil {
+		return errors.ErrInvalidAnswer
+	}
+
+	rateUp := model.RateUp{
+		AnswerID: answer.ID,
+		UserID:   userID,
+	}
+
+	if err := s.rateUpRepo.RateUp(ctx, &rateUp); err != nil {
+		return err
+	}
+
+	answer.RateUp += 1
 	return s.answerRepo.Update(ctx, answer)
 }
 

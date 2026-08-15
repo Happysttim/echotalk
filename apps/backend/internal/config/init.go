@@ -11,7 +11,8 @@ const (
 	CollectionUser    = "users"
 	CollectionSession = "sessions"
 	CollectionAnswer  = "answers"
-	CollectionSurvey  = "survey"
+	CollectionSurvey  = "surveys"
+	CollectionRateUp  = "rateups"
 )
 
 type config struct {

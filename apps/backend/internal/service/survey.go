@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type SurveyKeyword string
@@ -17,6 +18,7 @@ const (
 	SurveyKeywordTitle     SurveyKeyword = "title"
 	SurveyKeywordContent   SurveyKeyword = "content"
 	SurveyKeywordAuthor    SurveyKeyword = "author"
+	SurveyKeywordIsPublic  SurveyKeyword = "is_public"
 	SurveyKeywordCreatedAt SurveyKeyword = "created_at"
 )
 
@@ -34,10 +36,6 @@ func NewSurveyService(surveyRepo *repositories.MongoSurveyRepository) *SurveySer
 
 func (s *SurveyService) CreateSurvey(ctx context.Context, payload *model.CreateSurveyRequest, author *model.User) (*model.Survey, error) {
 	if payload == nil {
-		return nil, errors.ErrInvalidSurvey
-	}
-
-	if payload.Title == "" || payload.Content == "" {
 		return nil, errors.ErrInvalidInput
 	}
 
@@ -46,9 +44,12 @@ func (s *SurveyService) CreateSurvey(ctx context.Context, payload *model.CreateS
 	}
 
 	doc := &model.Survey{
-		Title:   payload.Title,
-		Content: payload.Content,
-		Author:  author,
+		Title:     payload.Title,
+		Content:   payload.Content,
+		Author:    author,
+		IsPublic:  payload.IsPublic,
+		Closed:    false,
+		ExpiresIn: payload.ExpiresIn,
 	}
 	return s.surveyRepo.Create(ctx, doc)
 }
@@ -68,7 +69,7 @@ func (s *SurveyService) GetSurveyByID(ctx context.Context, surveyID string) (*mo
 	return survey, nil
 }
 
-func (s *SurveyService) GetFilteredSurveys(ctx context.Context, filter SurveyFilter) ([]*model.Survey, error) {
+func (s *SurveyService) GetFilteredSurveys(ctx context.Context, filter SurveyFilter, opts ...options.Lister[options.FindOptions]) ([]*model.Survey, error) {
 	if filter == nil {
 		return nil, errors.ErrInvalidInput
 	}
@@ -84,7 +85,7 @@ func (s *SurveyService) GetFilteredSurveys(ctx context.Context, filter SurveyFil
 		return nil, errors.ErrInvalidInput
 	}
 
-	return s.surveyRepo.FindByFilter(ctx, m)
+	return s.surveyRepo.FindByFilter(ctx, m, opts...)
 }
 
 func (s *SurveyService) GetAllSurveys(ctx context.Context) ([]*model.Survey, error) {
@@ -93,10 +94,6 @@ func (s *SurveyService) GetAllSurveys(ctx context.Context) ([]*model.Survey, err
 
 func (s *SurveyService) UpdateSurvey(ctx context.Context, payload *model.UpdateSurveyRequest) error {
 	if payload == nil {
-		return errors.ErrInvalidSurvey
-	}
-
-	if payload.SurveyID == "" || payload.Title == "" || payload.Content == "" {
 		return errors.ErrInvalidInput
 	}
 
@@ -111,6 +108,10 @@ func (s *SurveyService) UpdateSurvey(ctx context.Context, payload *model.UpdateS
 
 	survey.Title = payload.Title
 	survey.Content = payload.Content
+	survey.IsPublic = payload.IsPublic
+	survey.ExpiresIn = payload.ExpiresIn
+	survey.Closed = payload.Closed
+
 	survey.UpdatedAt = time.Now()
 
 	return s.surveyRepo.Update(ctx, survey)
