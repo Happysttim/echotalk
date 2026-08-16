@@ -179,7 +179,7 @@ func (handler *SurveyHandler) GetSurveyPage(c *gin.Context) {
 	surveys, err := handler.surveyService.GetFilteredSurveys(
 		ctx,
 		filter,
-		options.Find().SetSort(sort).SetLimit(int64(limitNumber)),
+		options.Find().SetSort(sort).SetLimit(int64(limitNumber)+1),
 	)
 
 	if err != nil {
@@ -190,10 +190,12 @@ func (handler *SurveyHandler) GetSurveyPage(c *gin.Context) {
 	var nextSkip string
 	var nextID string
 	var nextAt string
+	hasNext := len(surveys) > limitNumber
 
-	if len(surveys) > 0 {
-		nextID = surveys[len(surveys)-1].ID.Hex()
-		nextAt = surveys[len(surveys)-1].UpdatedAt.Format(time.RFC3339Nano)
+	if hasNext && len(surveys) > 0 {
+		last := surveys[len(surveys)-1]
+		nextID = last.ID.Hex()
+		nextAt = last.UpdatedAt.Format(time.RFC3339Nano)
 	}
 
 	if nextID != "" && nextAt != "" {
@@ -211,5 +213,5 @@ func (handler *SurveyHandler) GetSurveyPage(c *gin.Context) {
 		nextSkip = base64.RawURLEncoding.EncodeToString(jsonBytes)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "ok", "skip": nextSkip, "surveys": surveys})
+	c.JSON(http.StatusOK, gin.H{"status": "ok", "skip": nextSkip, "hasNext": hasNext, "surveys": surveys[:limitNumber]})
 }
