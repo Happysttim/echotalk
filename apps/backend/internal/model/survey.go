@@ -12,9 +12,8 @@ type Survey struct {
 	Content   string        `json:"content" bson:"content"`
 	IsPublic  bool          `json:"is_public" bson:"is_public"`
 	Closed    bool          `json:"closed" bson:"closed"`
-	Answers   []*Answer     `json:"answers" bson:"answers"`
-	Author    *User         `json:"author" bson:"author"`
-	ExpiresIn time.Time     `json:"expires_in" bson:"expires_in"`
+	AuthorID  bson.ObjectID `json:"author_id" bson:"author_id"`
+	ExpiresAt time.Time     `json:"expires_at" bson:"expires_at"`
 	CreatedAt time.Time     `json:"created_at" bson:"created_at"`
 	UpdatedAt time.Time     `json:"updated_at" bson:"updated_at"`
 }
@@ -23,7 +22,7 @@ type CreateSurveyRequest struct {
 	Title     string    `json:"title" binding:"required"`
 	Content   string    `json:"content" binding:"required"`
 	IsPublic  bool      `json:"is_public" binding:"required"`
-	ExpiresIn time.Time `json:"expires_in" binding:"required"`
+	ExpiresAt time.Time `json:"expires_at" binding:"required"`
 }
 
 type UpdateSurveyRequest struct {
@@ -32,5 +31,5 @@ type UpdateSurveyRequest struct {
 	Content   string    `json:"content" binding:"required"`
 	IsPublic  bool      `json:"is_public" binding:"required"`
 	Closed    bool      `json:"closed" binding:"required"`
-	ExpiresIn time.Time `json:"expires_in" binding:"required"`
+	ExpiresAt time.Time `json:"expires_at" binding:"required"`
 }

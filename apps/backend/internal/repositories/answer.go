@@ -13,7 +13,9 @@ type AnswerRepository interface {
 	Create(ctx context.Context, answer *model.Answer) (*model.Answer, error)
 	Update(ctx context.Context, answer *model.Answer) error
 	FindByID(ctx context.Context, id string) (*model.Answer, error)
+	FindBySurveyID(ctx context.Context, id string) ([]*model.Answer, error)
 	Delete(ctx context.Context, id string) error
+	DeleteBySurveyID(ctx context.Context, id string) error
 	FindAll(ctx context.Context) ([]*model.Answer, error)
 }
 
@@ -63,6 +65,27 @@ func (r *MongoAnswerRepository) FindByID(ctx context.Context, id string) (*model
 	return &answer, nil
 }
 
+func (r *MongoAnswerRepository) FindBySurveyID(ctx context.Context, id string) ([]*model.Answer, error) {
+	objectID, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, err
+	}
+	cursor, err := r.collection.Find(ctx, bson.M{"survey_id": objectID})
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer cursor.Close(ctx)
+
+	answers := make([]*model.Answer, 0)
+	if err := cursor.All(ctx, &answers); err != nil {
+		return nil, err
+	}
+	return answers, nil
+
+}
+
 func (r *MongoAnswerRepository) Delete(ctx context.Context, id string) error {
 	objectID, err := bson.ObjectIDFromHex(id)
 	if err != nil {
@@ -70,6 +93,16 @@ func (r *MongoAnswerRepository) Delete(ctx context.Context, id string) error {
 	}
 
 	_, err = r.collection.DeleteOne(ctx, bson.M{"_id": objectID})
+	return err
+}
+
+func (r *MongoAnswerRepository) DeleteBySurveyID(ctx context.Context, id string) error {
+	objectID, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+
+	_, err = r.collection.DeleteOne(ctx, bson.M{"survey_id": objectID})
 	return err
 }
 
@@ -82,7 +115,7 @@ func (r *MongoAnswerRepository) FindAll(ctx context.Context) ([]*model.Answer, e
 
 	defer cursor.Close(ctx)
 
-	var answers []*model.Answer
+	answers := make([]*model.Answer, 0)
 	if err := cursor.All(ctx, &answers); err != nil {
 		return nil, err
 	}

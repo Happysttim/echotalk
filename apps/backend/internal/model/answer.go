@@ -8,7 +8,8 @@ import (
 
 type Answer struct {
 	ID        bson.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
-	Author    *User         `json:"author" bson:"author"`
+	SurveyID  bson.ObjectID `json:"survey_id" bson:"survey_id"`
+	AuthorID  bson.ObjectID `json:"author_id" bson:"author_id"`
 	Content   string        `json:"content" bson:"content"`
 	RateUp    int           `json:"rate_up" bson:"rate_up"`
 	CreatedAt time.Time     `json:"created_at" bson:"created_at"`

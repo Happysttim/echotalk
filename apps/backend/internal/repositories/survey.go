@@ -82,7 +82,7 @@ func (r *MongoSurveyRepository) FindByFilter(ctx context.Context, filter bson.M,
 
 	defer cursor.Close(ctx)
 
-	var surveys []*model.Survey
+	surveys := make([]*model.Survey, 0)
 
 	if err := cursor.All(ctx, &surveys); err != nil {
 		return nil, err
@@ -99,7 +99,7 @@ func (r *MongoSurveyRepository) FindAll(ctx context.Context) ([]*model.Survey, e
 
 	defer cursor.Close(ctx)
 
-	var surveys []*model.Survey
+	surveys := make([]*model.Survey, 0)
 	if err := cursor.All(ctx, &surveys); err != nil {
 		return nil, err
 	}

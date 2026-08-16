@@ -11,37 +11,50 @@ import (
 )
 
 type AnswerService struct {
-	answerRepo *repositories.MongoAnswerRepository
-	rateUpRepo *repositories.MongoRateUpRepository
+	answerRepo    *repositories.MongoAnswerRepository
+	rateUpRepo    *repositories.MongoRateUpRepository
+	userService   *UserService
+	surveyService *SurveyService
 }
 
-func NewAnswerService(answerRepo *repositories.MongoAnswerRepository, rateUpRepo *repositories.MongoRateUpRepository) *AnswerService {
+func NewAnswerService(answerRepo *repositories.MongoAnswerRepository, rateUpRepo *repositories.MongoRateUpRepository, userService *UserService, surveyService *SurveyService) *AnswerService {
 	return &AnswerService{
-		answerRepo: answerRepo,
-		rateUpRepo: rateUpRepo,
+		answerRepo:    answerRepo,
+		rateUpRepo:    rateUpRepo,
+		userService:   userService,
+		surveyService: surveyService,
 	}
 }
 
-func (s *AnswerService) CreateAnswer(ctx context.Context, payload *model.CreateAnswerRequest, author *model.User) (*model.Answer, error) {
+func (s *AnswerService) CreateAnswer(ctx context.Context, payload *model.CreateAnswerRequest, authorID string) (*model.Answer, error) {
 	if payload == nil {
 		return nil, errors.ErrInvalidAnswer
 	}
 
-	if payload.Content == "" {
-		return nil, errors.ErrInvalidInput
+	user, err := s.userService.GetUserByID(ctx, authorID)
+
+	if err != nil {
+		return nil, errors.ErrInternalServer
 	}
 
-	if payload.SurveyID == "" {
-		return nil, errors.ErrSurveyNotFound
-	}
-
-	if author == nil || author.ID.Hex() == "" {
+	if user == nil {
 		return nil, errors.ErrInvalidUser
+	}
+
+	survey, err := s.surveyService.GetSurveyByID(ctx, payload.SurveyID)
+
+	if err != nil {
+		return nil, errors.ErrInternalServer
+	}
+
+	if survey == nil {
+		return nil, errors.ErrInvalidSurvey
 	}
 
 	doc := &model.Answer{
 		Content:   payload.Content,
-		Author:    author,
+		SurveyID:  survey.ID,
+		AuthorID:  user.ID,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -59,6 +72,19 @@ func (s *AnswerService) GetAnswerByID(ctx context.Context, answerID string) (*mo
 		return nil, err
 	}
 	return answer, nil
+}
+
+func (s *AnswerService) GetAnswersBySurvey(ctx context.Context, surveyID string) ([]*model.Answer, error) {
+	if surveyID == "" {
+		return nil, errors.ErrInvalidAnswer
+	}
+
+	answers, err := s.answerRepo.FindBySurveyID(ctx, surveyID)
+	if err != nil {
+		return nil, err
+	}
+
+	return answers, nil
 }
 
 func (s *AnswerService) UpdateAnswer(ctx context.Context, payload *model.UpdateAnswerRequest) error {
@@ -113,14 +139,13 @@ func (s *AnswerService) DeleteAnswer(ctx context.Context, answerID string) error
 		return errors.ErrInvalidInput
 	}
 
-	answer, err := s.answerRepo.FindByID(ctx, answerID)
-	if err != nil {
-		return err
-	}
-
-	if answer == nil {
-		return errors.ErrAnswerNotFound
-	}
-
 	return s.answerRepo.Delete(ctx, answerID)
+}
+
+func (s *AnswerService) DeleteAnswerBySurvey(ctx context.Context, surveyID string) error {
+	if surveyID == "" {
+		return errors.ErrInvalidInput
+	}
+
+	return s.answerRepo.DeleteBySurveyID(ctx, surveyID)
 }

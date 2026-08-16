@@ -13,43 +13,42 @@ import (
 
 type SurveyKeyword string
 
-const (
-	SurveyKeywordID        SurveyKeyword = "_id"
-	SurveyKeywordTitle     SurveyKeyword = "title"
-	SurveyKeywordContent   SurveyKeyword = "content"
-	SurveyKeywordAuthor    SurveyKeyword = "author"
-	SurveyKeywordIsPublic  SurveyKeyword = "is_public"
-	SurveyKeywordCreatedAt SurveyKeyword = "created_at"
-)
-
-type SurveyFilter map[SurveyKeyword]interface{}
-
 type SurveyService struct {
-	surveyRepo *repositories.MongoSurveyRepository
+	surveyRepo    *repositories.MongoSurveyRepository
+	userService   *UserService
+	answerService *AnswerService
 }
 
-func NewSurveyService(surveyRepo *repositories.MongoSurveyRepository) *SurveyService {
+func NewSurveyService(surveyRepo *repositories.MongoSurveyRepository, userService *UserService, answerService *AnswerService) *SurveyService {
 	return &SurveyService{
-		surveyRepo: surveyRepo,
+		surveyRepo:    surveyRepo,
+		userService:   userService,
+		answerService: answerService,
 	}
 }
 
-func (s *SurveyService) CreateSurvey(ctx context.Context, payload *model.CreateSurveyRequest, author *model.User) (*model.Survey, error) {
+func (s *SurveyService) CreateSurvey(ctx context.Context, payload *model.CreateSurveyRequest, authorID string) (*model.Survey, error) {
 	if payload == nil {
 		return nil, errors.ErrInvalidInput
 	}
 
-	if author == nil || author.ID.Hex() == "" {
+	user, err := s.userService.GetUserByID(ctx, authorID)
+
+	if err != nil {
+		return nil, errors.ErrInternalServer
+	}
+
+	if user == nil {
 		return nil, errors.ErrInvalidUser
 	}
 
 	doc := &model.Survey{
 		Title:     payload.Title,
 		Content:   payload.Content,
-		Author:    author,
+		AuthorID:  user.ID,
 		IsPublic:  payload.IsPublic,
 		Closed:    false,
-		ExpiresIn: payload.ExpiresIn,
+		ExpiresAt: payload.ExpiresAt,
 	}
 	return s.surveyRepo.Create(ctx, doc)
 }
@@ -69,7 +68,7 @@ func (s *SurveyService) GetSurveyByID(ctx context.Context, surveyID string) (*mo
 	return survey, nil
 }
 
-func (s *SurveyService) GetFilteredSurveys(ctx context.Context, filter SurveyFilter, opts ...options.Lister[options.FindOptions]) ([]*model.Survey, error) {
+func (s *SurveyService) GetFilteredSurveys(ctx context.Context, filter bson.M, opts ...options.Lister[options.FindOptions]) ([]*model.Survey, error) {
 	if filter == nil {
 		return nil, errors.ErrInvalidInput
 	}
@@ -109,7 +108,7 @@ func (s *SurveyService) UpdateSurvey(ctx context.Context, payload *model.UpdateS
 	survey.Title = payload.Title
 	survey.Content = payload.Content
 	survey.IsPublic = payload.IsPublic
-	survey.ExpiresIn = payload.ExpiresIn
+	survey.ExpiresAt = payload.ExpiresAt
 	survey.Closed = payload.Closed
 
 	survey.UpdatedAt = time.Now()
@@ -122,13 +121,9 @@ func (s *SurveyService) DeleteSurvey(ctx context.Context, surveyID string) error
 		return errors.ErrInvalidInput
 	}
 
-	survey, err := s.surveyRepo.FindByID(ctx, surveyID)
+	err := s.answerService.DeleteAnswerBySurvey(ctx, surveyID)
 	if err != nil {
 		return err
-	}
-
-	if survey == nil {
-		return errors.ErrSurveyNotFound
 	}
 
 	return s.surveyRepo.Delete(ctx, surveyID)
