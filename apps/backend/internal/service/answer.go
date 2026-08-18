@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type AnswerService struct {
@@ -85,6 +86,25 @@ func (s *AnswerService) GetAnswersBySurvey(ctx context.Context, surveyID string)
 	}
 
 	return answers, nil
+}
+
+func (s *AnswerService) GetFilteredAnswers(ctx context.Context, filter bson.M, opts ...options.Lister[options.FindOptions]) ([]*model.Answer, error) {
+	if filter == nil {
+		return nil, errors.ErrInvalidInput
+	}
+
+	var m bson.M
+	marshal, err := bson.Marshal(filter)
+
+	if err != nil {
+		return nil, errors.ErrInvalidInput
+	}
+
+	if err := bson.Unmarshal(marshal, &m); err != nil {
+		return nil, errors.ErrInvalidInput
+	}
+
+	return s.answerRepo.FindByFilter(ctx, m, opts...)
 }
 
 func (s *AnswerService) UpdateAnswer(ctx context.Context, payload *model.UpdateAnswerRequest) error {

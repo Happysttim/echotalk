@@ -7,6 +7,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type AnswerRepository interface {
@@ -17,6 +18,7 @@ type AnswerRepository interface {
 	Delete(ctx context.Context, id string) error
 	DeleteBySurveyID(ctx context.Context, id string) error
 	FindAll(ctx context.Context) ([]*model.Answer, error)
+	FindByFilter(ctx context.Context, filter bson.M, opts ...options.Lister[options.FindOptions]) ([]*model.Answer, error)
 }
 
 type MongoAnswerRepository struct {
@@ -84,6 +86,23 @@ func (r *MongoAnswerRepository) FindBySurveyID(ctx context.Context, id string) (
 	}
 	return answers, nil
 
+}
+
+func (r *MongoAnswerRepository) FindByFilter(ctx context.Context, filter bson.M, opts ...options.Lister[options.FindOptions]) ([]*model.Answer, error) {
+	cursor, err := r.collection.Find(ctx, filter, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	defer cursor.Close(ctx)
+
+	answers := make([]*model.Answer, 0)
+
+	if err := cursor.All(ctx, answers); err != nil {
+		return nil, err
+	}
+
+	return answers, nil
 }
 
 func (r *MongoAnswerRepository) Delete(ctx context.Context, id string) error {

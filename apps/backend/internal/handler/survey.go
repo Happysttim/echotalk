@@ -8,26 +8,13 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
-
-const (
-	LimitSmall  = 10
-	LimitMedium = 30
-	LimitLarge  = 30
-)
-
-const (
-	TypeID        = "_id"
-	TypeUpdatedAt = "updated_at"
-)
-
-var Limits = []int{LimitSmall, LimitMedium, LimitLarge}
-var Types = []string{TypeID, TypeUpdatedAt}
 
 type SurveyCursor struct {
 	SurveyID  string `json:"survey_id"`
@@ -90,6 +77,41 @@ func (handler *SurveyHandler) GetSurvey(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok", "survey": survey})
 }
 
+// @Router /surveys [patch]
+func (handler *SurveyHandler) UpdateSurvey(c *gin.Context) {
+	payload := new(model.UpdateSurveyRequest)
+	userID := c.GetString("userID")
+
+	if userID == "" {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "bad request"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	survey, err := handler.surveyService.GetSurveyByID(ctx, payload.SurveyID)
+
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	if strings.Compare(survey.AuthorID.Hex(), userID) != 0 {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	if err := handler.surveyService.UpdateSurvey(ctx, payload); err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
 // @Router /surveys?type={string}&cursor={string}&limit={number} [get]
 func (handler *SurveyHandler) GetSurveyPage(c *gin.Context) {
 	findType := c.Query("type")
@@ -99,7 +121,7 @@ func (handler *SurveyHandler) GetSurveyPage(c *gin.Context) {
 	filter := bson.M{}
 	sort := bson.D{}
 
-	if !slices.Contains(Types, findType) {
+	if !slices.Contains(SurveyTypes, findType) {
 		findType = TypeID
 	}
 
@@ -121,14 +143,14 @@ func (handler *SurveyHandler) GetSurveyPage(c *gin.Context) {
 			return
 		}
 
-		var cursor SurveyCursor
-		if err := json.Unmarshal(decodeBytes, &cursor); err != nil {
+		cursor := new(SurveyCursor)
+		if err := json.Unmarshal(decodeBytes, cursor); err != nil {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "bad request"})
 			return
 		}
 
 		if findType == TypeUpdatedAt {
-			surveyID, err := bson.ObjectIDFromHex(cursor.SurveyID)
+			surveyId, err := bson.ObjectIDFromHex(cursor.SurveyID)
 			if err != nil {
 				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "bad request"})
 				return
@@ -144,7 +166,7 @@ func (handler *SurveyHandler) GetSurveyPage(c *gin.Context) {
 				bson.M{
 					"updated_at": updatedAt,
 					"_id": bson.M{
-						"$lt": surveyID,
+						"$lt": surveyId,
 					},
 				},
 				bson.M{

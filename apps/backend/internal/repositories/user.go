@@ -109,7 +109,7 @@ func (r *MongoUserRepository) FindAll(ctx context.Context) ([]*model.User, error
 	defer cursor.Close(ctx)
 
 	users := make([]*model.User, 0)
-	if err := cursor.All(ctx, &users); err != nil {
+	if err := cursor.All(ctx, users); err != nil {
 		return nil, err
 	}
 
