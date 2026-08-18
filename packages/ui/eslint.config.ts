@@ -10,29 +10,23 @@ const __dirname = path.dirname(__filename);
 
 export default defineConfig([
   {
-    files: ["**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
+    ignores: ["**/eslint.config.*", "**/vite.config.*"],
+  },
+  {
+    files: ["src/**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
     languageOptions: {
       globals: globals.browser,
       parserOptions: {
-        projectService: {
-          allowDefaultProject: [
-            "*.ts",
-            "*.mts",
-            "eslint.config.ts",
-            "eslint.config.mts",
-          ],
-        },
+        projectService: true,
         tsconfigRootDir: __dirname,
       },
     },
   },
-
-  tseslint.configs.recommended,
-  tseslint.configs.recommendedTypeChecked,
-
+  ...tseslint.configs.recommended,
+  ...tseslint.configs.recommendedTypeChecked,
   {
     ...pluginReact.configs.flat.recommended,
-    files: ["**/*.{jsx,tsx}"],
+    files: ["src/**/*.{jsx,tsx}"],
     languageOptions: {
       ...pluginReact.configs.flat.recommended?.languageOptions,
       globals: {
