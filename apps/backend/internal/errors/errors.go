@@ -24,10 +24,6 @@ var (
 )
 
 var (
-	ErrBadRequest = errors.New("bad request")
-)
-
-var (
 	ErrCreateAccessToken  = errors.New("failed to create access token")
 	ErrCreateRefreshToken = errors.New("failed to create refresh token")
 )
@@ -38,4 +34,7 @@ var (
 
 var (
 	ErrInternalServer = errors.New("internal server error")
+	ErrUnauthorized   = errors.New("unaurhotized")
+	ErrBadRequest     = errors.New("bad request")
+	ErrNotFound       = errors.New("not found")
 )

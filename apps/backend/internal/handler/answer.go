@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"echotalk/internal/errors"
 	"echotalk/internal/model"
+	"echotalk/internal/response"
 	"echotalk/internal/service"
 	"encoding/base64"
 	"encoding/json"
@@ -36,11 +38,11 @@ func (handler *AnswerHandler) CreateAnswer(c *gin.Context) {
 	userID := c.GetString("userID")
 
 	if userID == "" {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
 		return
 	}
 	if err := c.ShouldBindJSON(payload); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Bad Request"})
+		response.Failed(c, http.StatusUnauthorized, errors.ErrBadRequest.Error())
 		return
 	}
 
@@ -48,18 +50,18 @@ func (handler *AnswerHandler) CreateAnswer(c *gin.Context) {
 
 	answer, err := handler.answerService.CreateAnswer(ctx, payload, userID)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		response.Failed(c, http.StatusUnauthorized, errors.ErrInternalServer.Error())
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"status": "created", "answer": answer})
+	response.OKWithData(c, http.StatusCreated, answer)
 }
 
 // @Router /answers/:answerId [get]
 func (handler *AnswerHandler) GetAnswer(c *gin.Context) {
 	answerId := c.Param("answerId")
 	if answerId == "" {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "bad request"})
+		response.Failed(c, http.StatusUnauthorized, errors.ErrBadRequest.Error())
 		return
 	}
 
@@ -67,11 +69,11 @@ func (handler *AnswerHandler) GetAnswer(c *gin.Context) {
 	answer, err := handler.answerService.GetAnswerByID(ctx, answerId)
 
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		response.Failed(c, http.StatusUnauthorized, errors.ErrInternalServer.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "ok", "answer": answer})
+	response.OKWithData(c, http.StatusOK, answer)
 }
 
 // @Router /answers [patch]
@@ -80,11 +82,11 @@ func (handler *AnswerHandler) UpdateAnswer(c *gin.Context) {
 	userID := c.GetString("userID")
 
 	if userID == "" {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
 		return
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "bad request"})
+		response.Failed(c, http.StatusUnauthorized, errors.ErrBadRequest.Error())
 		return
 	}
 
@@ -92,21 +94,21 @@ func (handler *AnswerHandler) UpdateAnswer(c *gin.Context) {
 	answer, err := handler.answerService.GetAnswerByID(ctx, payload.AnswerID)
 
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		response.Failed(c, http.StatusUnauthorized, errors.ErrInternalServer.Error())
 		return
 	}
 
 	if strings.Compare(answer.AuthorID.Hex(), userID) != 0 {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
 		return
 	}
 
 	if err := handler.answerService.UpdateAnswer(ctx, payload); err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		response.Failed(c, http.StatusUnauthorized, errors.ErrInternalServer.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	response.OK(c, http.StatusOK)
 }
 
 // @Router /answers?cursor={string} [get]
@@ -114,19 +116,19 @@ func (handler *AnswerHandler) GetAnswerFeed(c *gin.Context) {
 	cursorBase64 := c.Query("cursor")
 
 	if cursorBase64 == "" {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "bad request"})
+		response.Failed(c, http.StatusUnauthorized, errors.ErrBadRequest.Error())
 		return
 	}
 
 	decodeBytes, err := base64.RawURLEncoding.DecodeString(cursorBase64)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "bad request"})
+		response.Failed(c, http.StatusUnauthorized, errors.ErrBadRequest.Error())
 		return
 	}
 
 	cursor := new(AnswerCursor)
 	if err := json.Unmarshal(decodeBytes, cursor); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "bad request"})
+		response.Failed(c, http.StatusUnauthorized, errors.ErrBadRequest.Error())
 		return
 	}
 
@@ -134,24 +136,24 @@ func (handler *AnswerHandler) GetAnswerFeed(c *gin.Context) {
 	survey, err := handler.surveyService.GetSurveyByID(ctx, cursor.SurveyID)
 
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		response.Failed(c, http.StatusUnauthorized, errors.ErrInternalServer.Error())
 		return
 	}
 
 	if survey == nil {
-		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "not found"})
+		response.Failed(c, http.StatusNotFound, errors.ErrNotFound.Error())
 		return
 	}
 
 	answer, err := handler.answerService.GetAnswerByID(ctx, cursor.AnswerID)
 
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		response.Failed(c, http.StatusUnauthorized, errors.ErrInternalServer.Error())
 		return
 	}
 
 	if answer == nil || answer.SurveyID != survey.ID {
-		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "not found"})
+		response.Failed(c, http.StatusNotFound, errors.ErrNotFound.Error())
 		return
 	}
 
@@ -172,7 +174,7 @@ func (handler *AnswerHandler) GetAnswerFeed(c *gin.Context) {
 	)
 
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		response.Failed(c, http.StatusUnauthorized, errors.ErrInternalServer.Error())
 		return
 	}
 
@@ -193,11 +195,42 @@ func (handler *AnswerHandler) GetAnswerFeed(c *gin.Context) {
 
 	jsonBytes, err := json.Marshal(nextCursor)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		response.Failed(c, http.StatusUnauthorized, errors.ErrInternalServer.Error())
 		return
 	}
 
 	nextSkip = base64.RawURLEncoding.EncodeToString(jsonBytes)
 
-	c.JSON(http.StatusOK, gin.H{"status": "ok", "skip": nextSkip, "hasNext": hasNext, "answers": answers[:LimitSmall]})
+	response.OKWithData(c, http.StatusOK, map[string]any{"skip": nextSkip, "hasNext": hasNext, "answers": answers[:LimitSmall]})
+}
+
+// @Router /answers/rateup
+func (handler *AnswerHandler) RateUp(c *gin.Context) {
+	payload := new(model.RateUpRequest)
+	userIdString := c.GetString("userId")
+
+	if err := c.ShouldBindJSON(payload); err != nil {
+		response.Failed(c, http.StatusNotFound, errors.ErrNotFound.Error())
+		return
+	}
+
+	if userIdString == "" {
+		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
+		return
+	}
+
+	ctx := c.Request.Context()
+	userId, err := bson.ObjectIDFromHex(userIdString)
+
+	if err != nil {
+		response.Failed(c, http.StatusUnauthorized, errors.ErrInternalServer.Error())
+		return
+	}
+
+	if err := handler.answerService.RateUp(ctx, payload.AnswerID, userId); err != nil {
+		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
+		return
+	}
+
+	response.OK(c, http.StatusOK)
 }

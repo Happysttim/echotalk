@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"echotalk/internal/errors"
 	"echotalk/internal/model"
+	"echotalk/internal/response"
 	"echotalk/internal/service"
 	"encoding/base64"
 	"encoding/json"
@@ -39,11 +41,11 @@ func (handler *SurveyHandler) CreateSurvey(c *gin.Context) {
 	userID := c.GetString("userID")
 
 	if userID == "" {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
 		return
 	}
 	if err := c.ShouldBindJSON(payload); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Bad Request"})
+		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 		return
 	}
 
@@ -51,18 +53,18 @@ func (handler *SurveyHandler) CreateSurvey(c *gin.Context) {
 
 	survey, err := handler.surveyService.CreateSurvey(ctx, payload, userID)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"status": "created", "survey": survey})
+	response.OKWithData(c, http.StatusCreated, survey)
 }
 
 // @Router /surveys/:surveyId [get]
 func (handler *SurveyHandler) GetSurvey(c *gin.Context) {
 	surveyId := c.Param("surveyId")
 	if surveyId == "" {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "bad request"})
+		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 		return
 	}
 
@@ -70,11 +72,11 @@ func (handler *SurveyHandler) GetSurvey(c *gin.Context) {
 	survey, err := handler.surveyService.GetSurveyByID(ctx, surveyId)
 
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "ok", "survey": survey})
+	response.OKWithData(c, http.StatusOK, survey)
 }
 
 // @Router /surveys [patch]
@@ -83,11 +85,11 @@ func (handler *SurveyHandler) UpdateSurvey(c *gin.Context) {
 	userID := c.GetString("userID")
 
 	if userID == "" {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
 		return
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "bad request"})
+		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 		return
 	}
 
@@ -95,21 +97,21 @@ func (handler *SurveyHandler) UpdateSurvey(c *gin.Context) {
 	survey, err := handler.surveyService.GetSurveyByID(ctx, payload.SurveyID)
 
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
 		return
 	}
 
 	if strings.Compare(survey.AuthorID.Hex(), userID) != 0 {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
 		return
 	}
 
 	if err := handler.surveyService.UpdateSurvey(ctx, payload); err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	response.OK(c, http.StatusOK)
 }
 
 // @Router /surveys?type={string}&cursor={string}&limit={number} [get]
@@ -139,26 +141,26 @@ func (handler *SurveyHandler) GetSurveyPage(c *gin.Context) {
 	if cursorBase64 != "" {
 		decodeBytes, err := base64.RawURLEncoding.DecodeString(cursorBase64)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "bad request"})
+			response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 			return
 		}
 
 		cursor := new(SurveyCursor)
 		if err := json.Unmarshal(decodeBytes, cursor); err != nil {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "bad request"})
+			response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 			return
 		}
 
 		if findType == TypeUpdatedAt {
 			surveyId, err := bson.ObjectIDFromHex(cursor.SurveyID)
 			if err != nil {
-				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "bad request"})
+				response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 				return
 			}
 
 			updatedAt, err := time.Parse(time.RFC3339Nano, cursor.UpdatedAt)
 			if err != nil {
-				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "bad request"})
+				response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 				return
 			}
 
@@ -178,7 +180,7 @@ func (handler *SurveyHandler) GetSurveyPage(c *gin.Context) {
 		} else {
 			surveyID, err := bson.ObjectIDFromHex(cursor.SurveyID)
 			if err == nil {
-				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "bad request"})
+				response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 				return
 			}
 			filter["_id"] = bson.M{
@@ -205,7 +207,7 @@ func (handler *SurveyHandler) GetSurveyPage(c *gin.Context) {
 	)
 
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
 		return
 	}
 
@@ -228,12 +230,12 @@ func (handler *SurveyHandler) GetSurveyPage(c *gin.Context) {
 
 		jsonBytes, err := json.Marshal(nextCursor)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
 			return
 		}
 
 		nextSkip = base64.RawURLEncoding.EncodeToString(jsonBytes)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "ok", "skip": nextSkip, "hasNext": hasNext, "surveys": surveys[:limitNumber]})
+	response.OKWithData(c, http.StatusOK, map[string]any{"skip": nextSkip, "hasNext": hasNext, "surveys": surveys[:limitNumber]})
 }
