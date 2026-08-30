@@ -9,10 +9,10 @@ import (
 )
 
 type UserService struct {
-	userRepo *repositories.MongoUserRepository
+	userRepo repositories.UserRepository
 }
 
-func NewUserService(userRepo *repositories.MongoUserRepository) *UserService {
+func NewUserService(userRepo repositories.UserRepository) *UserService {
 	return &UserService{
 		userRepo: userRepo,
 	}

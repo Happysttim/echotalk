@@ -2,6 +2,8 @@ package repositories
 
 import (
 	"context"
+	"echotalk/internal/config"
+	"echotalk/internal/database"
 	"echotalk/internal/model"
 
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -15,8 +17,8 @@ type MongoRateUpRepository struct {
 	collection *mongo.Collection
 }
 
-func NewRateUpRepository(collection *mongo.Collection) RateUpRepository {
-	return &MongoRateUpRepository{collection: collection}
+func NewRateUpRepository() RateUpRepository {
+	return &MongoRateUpRepository{collection: database.Database.Collection(config.CollectionRateUp)}
 }
 
 func (r *MongoRateUpRepository) RateUp(ctx context.Context, rateUp *model.RateUp) error {

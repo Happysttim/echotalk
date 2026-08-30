@@ -2,6 +2,8 @@ package repositories
 
 import (
 	"context"
+	"echotalk/internal/config"
+	"echotalk/internal/database"
 	"echotalk/internal/model"
 	"errors"
 
@@ -23,8 +25,8 @@ type MongoUserRepository struct {
 	collection *mongo.Collection
 }
 
-func NewMongoUserRepository(collection *mongo.Collection) UserRepository {
-	return &MongoUserRepository{collection: collection}
+func NewMongoUserRepository() UserRepository {
+	return &MongoUserRepository{collection: database.Database.Collection(config.CollectionUser)}
 }
 
 func (r *MongoUserRepository) Create(ctx context.Context, user *model.User) (*model.User, error) {
@@ -109,7 +111,7 @@ func (r *MongoUserRepository) FindAll(ctx context.Context) ([]*model.User, error
 	defer cursor.Close(ctx)
 
 	users := make([]*model.User, 0)
-	if err := cursor.All(ctx, users); err != nil {
+	if err := cursor.All(ctx, &users); err != nil {
 		return nil, err
 	}
 

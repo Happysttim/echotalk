@@ -33,3 +33,7 @@ type UpdateSurveyRequest struct {
 	Closed    bool      `json:"closed" binding:"required"`
 	ExpiresAt time.Time `json:"expires_at" binding:"required"`
 }
+
+type DeleteSurveyRequest struct {
+	SurveyID string `json:"survey_id" binding:"required"`
+}

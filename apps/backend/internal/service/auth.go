@@ -18,12 +18,12 @@ type LoginResponse struct {
 }
 
 type AuthService struct {
-	sessionRepo  *repositories.MongoSessionRepository
+	sessionRepo  repositories.SessionRepository
 	userService  *UserService
 	googleClient *oauth.GoogleClient
 }
 
-func NewAuthService(sessionRepo *repositories.MongoSessionRepository, userService *UserService) *AuthService {
+func NewAuthService(sessionRepo repositories.SessionRepository, userService *UserService) *AuthService {
 	return &AuthService{
 		sessionRepo:  sessionRepo,
 		userService:  userService,

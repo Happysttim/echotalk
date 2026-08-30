@@ -2,6 +2,8 @@ package repositories
 
 import (
 	"context"
+	"echotalk/internal/config"
+	"echotalk/internal/database"
 	"echotalk/internal/model"
 	"errors"
 
@@ -20,8 +22,8 @@ type MongoSessionRepository struct {
 	collection *mongo.Collection
 }
 
-func NewMongoSessionRepository(collection *mongo.Collection) SessionRepository {
-	return &MongoSessionRepository{collection: collection}
+func NewMongoSessionRepository() SessionRepository {
+	return &MongoSessionRepository{collection: database.Database.Collection(config.CollectionSession)}
 }
 
 func (r *MongoSessionRepository) Create(ctx context.Context, session *model.Session) (*model.Session, error) {

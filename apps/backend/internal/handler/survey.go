@@ -25,12 +25,14 @@ type SurveyCursor struct {
 
 type SurveyHandler struct {
 	surveyService *service.SurveyService
+	answerService *service.AnswerService
 	userService   *service.UserService
 }
 
-func NewSurveyHandler(surveyService *service.SurveyService, userService *service.UserService) *SurveyHandler {
+func NewSurveyHandler(surveyService *service.SurveyService, answerService *service.AnswerService, userService *service.UserService) *SurveyHandler {
 	return &SurveyHandler{
 		surveyService: surveyService,
+		answerService: answerService,
 		userService:   userService,
 	}
 }
@@ -58,6 +60,40 @@ func (handler *SurveyHandler) CreateSurvey(c *gin.Context) {
 	}
 
 	response.OKWithData(c, http.StatusCreated, survey)
+}
+
+// @Router /surveys [delete]
+func (handler *SurveyHandler) DeleteSurvey(c *gin.Context) {
+	payload := new(model.DeleteSurveyRequest)
+	userID := c.GetString("userID")
+
+	if userID == "" {
+		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
+		return
+	}
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
+		return
+	}
+
+	ctx := c.Request.Context()
+	survey, err := handler.surveyService.GetSurveyByID(ctx, payload.SurveyID)
+
+	if err != nil {
+		response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
+		return
+	}
+
+	if strings.Compare(survey.AuthorID.Hex(), userID) != 0 {
+		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
+		return
+	}
+
+	if err := handler.answerService.DeleteAnswerBySurvey(ctx, survey.ID.Hex()); err != nil {
+		response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
+	}
+
+	response.OK(c, http.StatusOK)
 }
 
 // @Router /surveys/:surveyId [get]

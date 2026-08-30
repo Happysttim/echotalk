@@ -38,6 +38,12 @@ func init() {
 	}
 
 	Client = client
+
+	if config.Config.DBName == "" {
+		panic("invalid mongo database name")
+	}
+
+	Database = Client.Database(config.Config.DBName)
 }
 
 func InitDatabase() error {
@@ -45,11 +51,6 @@ func InitDatabase() error {
 		return errors.New("mongo client is nil")
 	}
 
-	if config.Config.DBName == "" {
-		return errors.New("invalid mongo database name")
-	}
-
-	Database = Client.Database(config.Config.DBName)
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
 		10*time.Second,

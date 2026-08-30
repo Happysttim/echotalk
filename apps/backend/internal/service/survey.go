@@ -14,16 +14,14 @@ import (
 type SurveyKeyword string
 
 type SurveyService struct {
-	surveyRepo    *repositories.MongoSurveyRepository
-	userService   *UserService
-	answerService *AnswerService
+	surveyRepo  repositories.SurveyRepository
+	userService *UserService
 }
 
-func NewSurveyService(surveyRepo *repositories.MongoSurveyRepository, userService *UserService, answerService *AnswerService) *SurveyService {
+func NewSurveyService(surveyRepo repositories.SurveyRepository, userService *UserService) *SurveyService {
 	return &SurveyService{
-		surveyRepo:    surveyRepo,
-		userService:   userService,
-		answerService: answerService,
+		surveyRepo:  surveyRepo,
+		userService: userService,
 	}
 }
 
@@ -119,11 +117,6 @@ func (s *SurveyService) UpdateSurvey(ctx context.Context, payload *model.UpdateS
 func (s *SurveyService) DeleteSurvey(ctx context.Context, surveyID string) error {
 	if surveyID == "" {
 		return errors.ErrInvalidInput
-	}
-
-	err := s.answerService.DeleteAnswerBySurvey(ctx, surveyID)
-	if err != nil {
-		return err
 	}
 
 	return s.surveyRepo.Delete(ctx, surveyID)

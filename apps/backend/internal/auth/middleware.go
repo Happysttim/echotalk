@@ -1,6 +1,9 @@
 package auth
 
 import (
+	"echotalk/internal/errors"
+	"echotalk/internal/response"
+	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -12,18 +15,32 @@ func AuthRequired() gin.HandlerFunc {
 		tokenString := extractAuthorized(authorized)
 
 		if tokenString == "" {
-			abortJSON(c)
+			abortUnauthorized(c)
 			return
 		}
 
 		tokenClaims, err := ParseAccessToken(tokenString)
 
 		if err != nil || tokenClaims == nil || tokenClaims.UserID == "" || tokenClaims.TokenType != "access" {
-			abortJSON(c)
+			abortUnauthorized(c)
 			return
 		}
 
 		c.Set("userID", tokenClaims.ID)
+		c.Next()
+	}
+}
+
+func AuthUnrequired() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authorized := c.GetHeader("Authorization")
+		tokenString := extractAuthorized(authorized)
+
+		if tokenString != "" {
+			abortBadRequest(c)
+			return
+		}
+
 		c.Next()
 	}
 }
@@ -36,6 +53,10 @@ func extractAuthorized(authorized string) string {
 	return strings.TrimPrefix(authorized, "Bearer ")
 }
 
-func abortJSON(c *gin.Context) {
-	c.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized"})
+func abortUnauthorized(c *gin.Context) {
+	response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
+}
+
+func abortBadRequest(c *gin.Context) {
+	response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 }

@@ -57,6 +57,31 @@ func (handler *AnswerHandler) CreateAnswer(c *gin.Context) {
 	response.OKWithData(c, http.StatusCreated, answer)
 }
 
+// @Router /answers [delete]
+func (handler *AnswerHandler) DeleteAnswer(c *gin.Context) {
+	payload := new(model.DeleteAnswerRequest)
+
+	if err := c.ShouldBindJSON(payload); err != nil {
+		response.Failed(c, http.StatusUnauthorized, errors.ErrBadRequest.Error())
+		return
+	}
+
+	ctx := c.Request.Context()
+	answer, err := handler.answerService.GetAnswerByID(ctx, payload.AnswerID)
+
+	if err != nil {
+		response.Failed(c, http.StatusUnauthorized, errors.ErrInternalServer.Error())
+		return
+	}
+
+	if err := handler.answerService.DeleteAnswer(ctx, answer.ID.Hex()); err != nil {
+		response.Failed(c, http.StatusUnauthorized, errors.ErrInternalServer.Error())
+		return
+	}
+
+	response.OK(c, http.StatusOK)
+}
+
 // @Router /answers/:answerId [get]
 func (handler *AnswerHandler) GetAnswer(c *gin.Context) {
 	answerId := c.Param("answerId")
@@ -204,7 +229,7 @@ func (handler *AnswerHandler) GetAnswerFeed(c *gin.Context) {
 	response.OKWithData(c, http.StatusOK, map[string]any{"skip": nextSkip, "hasNext": hasNext, "answers": answers[:LimitSmall]})
 }
 
-// @Router /answers/rateup
+// @Router /answers/rateup [post]
 func (handler *AnswerHandler) RateUp(c *gin.Context) {
 	payload := new(model.RateUpRequest)
 	userIdString := c.GetString("userId")

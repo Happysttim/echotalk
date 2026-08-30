@@ -26,3 +26,7 @@ type UpdateAnswerRequest struct {
 	AnswerID string `json:"answer_id" binding:"required"`
 	Content  string `json:"content" binding:"required"`
 }
+
+type DeleteAnswerRequest struct {
+	AnswerID string `json:"answer_id" binding:"required"`
+}

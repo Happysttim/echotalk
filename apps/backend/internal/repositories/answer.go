@@ -2,6 +2,8 @@ package repositories
 
 import (
 	"context"
+	"echotalk/internal/config"
+	"echotalk/internal/database"
 	"echotalk/internal/model"
 	"errors"
 
@@ -25,8 +27,8 @@ type MongoAnswerRepository struct {
 	collection *mongo.Collection
 }
 
-func NewMongoAnswerRepository(collection *mongo.Collection) AnswerRepository {
-	return &MongoAnswerRepository{collection: collection}
+func NewMongoAnswerRepository() AnswerRepository {
+	return &MongoAnswerRepository{collection: database.Database.Collection(config.CollectionAnswer)}
 }
 
 func (r *MongoAnswerRepository) Create(ctx context.Context, answer *model.Answer) (*model.Answer, error) {
@@ -98,7 +100,7 @@ func (r *MongoAnswerRepository) FindByFilter(ctx context.Context, filter bson.M,
 
 	answers := make([]*model.Answer, 0)
 
-	if err := cursor.All(ctx, answers); err != nil {
+	if err := cursor.All(ctx, &answers); err != nil {
 		return nil, err
 	}
 

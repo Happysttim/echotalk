@@ -12,18 +12,16 @@ import (
 )
 
 type AnswerService struct {
-	answerRepo    *repositories.MongoAnswerRepository
-	rateUpRepo    *repositories.MongoRateUpRepository
-	userService   *UserService
-	surveyService *SurveyService
+	answerRepo  repositories.AnswerRepository
+	rateUpRepo  repositories.RateUpRepository
+	userService *UserService
 }
 
-func NewAnswerService(answerRepo *repositories.MongoAnswerRepository, rateUpRepo *repositories.MongoRateUpRepository, userService *UserService, surveyService *SurveyService) *AnswerService {
+func NewAnswerService(answerRepo repositories.AnswerRepository, rateUpRepo repositories.RateUpRepository, userService *UserService) *AnswerService {
 	return &AnswerService{
-		answerRepo:    answerRepo,
-		rateUpRepo:    rateUpRepo,
-		userService:   userService,
-		surveyService: surveyService,
+		answerRepo:  answerRepo,
+		rateUpRepo:  rateUpRepo,
+		userService: userService,
 	}
 }
 
@@ -42,19 +40,15 @@ func (s *AnswerService) CreateAnswer(ctx context.Context, payload *model.CreateA
 		return nil, errors.ErrInvalidUser
 	}
 
-	survey, err := s.surveyService.GetSurveyByID(ctx, payload.SurveyID)
+	surveyObjectID, err := bson.ObjectIDFromHex(payload.SurveyID)
 
 	if err != nil {
 		return nil, errors.ErrInternalServer
 	}
 
-	if survey == nil {
-		return nil, errors.ErrInvalidSurvey
-	}
-
 	doc := &model.Answer{
 		Content:   payload.Content,
-		SurveyID:  survey.ID,
+		SurveyID:  surveyObjectID,
 		AuthorID:  user.ID,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),

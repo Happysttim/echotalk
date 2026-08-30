@@ -174,3 +174,28 @@ func (handler *AuthHandler) Logout(c *gin.Context) {
 	c.SetCookie(RefreshToken, "", -1, "/", "", true, true)
 	response.OK(c, http.StatusOK)
 }
+
+// @Router /auth [delete]
+func (handler *AuthHandler) DeleteAccount(c *gin.Context) {
+	userID := c.GetString("userID")
+	if userID == "" {
+		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
+		return
+	}
+
+	ctx := c.Request.Context()
+	user, err := handler.userService.GetUserByID(ctx, userID)
+
+	if err != nil || user == nil {
+		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
+		return
+	}
+
+	if err := handler.userService.DeleteUser(ctx, user.ID.Hex()); err != nil {
+		response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
+		return
+	}
+
+	c.SetCookie(RefreshToken, "", -1, "/", "", true, true)
+	response.OK(c, http.StatusOK)
+}
