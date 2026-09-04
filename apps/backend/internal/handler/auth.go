@@ -6,6 +6,7 @@ import (
 	"echotalk/internal/model"
 	"echotalk/internal/response"
 	"echotalk/internal/service"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -31,10 +32,10 @@ func NewAuthHandler(authService *service.AuthService, userService *service.UserS
 	}
 }
 
-// @Router /auth/google [post]
+// @Router /auth/google [get]
 func (handler *AuthHandler) GoogleLogin(c *gin.Context) {
 	googleAuth := new(model.GoogleAuthRequest)
-	if err := c.ShouldBindJSON(googleAuth); err != nil {
+	if err := c.ShouldBindQuery(googleAuth); err != nil {
 		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 		return
 	}
@@ -48,7 +49,7 @@ func (handler *AuthHandler) GoogleLogin(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie(RefreshToken, loginResponse.RefreshToken, RefreshTokenMaxAge, "/", "", true, true)
+	c.SetCookie(RefreshToken, loginResponse.RefreshToken, RefreshTokenMaxAge, "/", "", false, true)
 	response.OKWithData(c, http.StatusOK, map[string]string{
 		"accessToken": loginResponse.AccessToken,
 	})
@@ -67,11 +68,11 @@ func (handler *AuthHandler) LocalLogin(c *gin.Context) {
 	loginResponse, err := handler.authService.LoginWithLocal(ctx, localAuth)
 
 	if err != nil {
-		response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
+		response.Failed(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	c.SetCookie(RefreshToken, loginResponse.RefreshToken, RefreshTokenMaxAge, "/", "", true, true)
+	c.SetCookie(RefreshToken, loginResponse.RefreshToken, RefreshTokenMaxAge, "/", "", false, true)
 	response.OKWithData(c, http.StatusOK, map[string]string{
 		"accessToken": loginResponse.AccessToken,
 	})
@@ -81,7 +82,7 @@ func (handler *AuthHandler) LocalLogin(c *gin.Context) {
 func (handler *AuthHandler) LocalRegister(c *gin.Context) {
 	localAuth := new(model.LocalAuthRequest)
 	if err := c.ShouldBindJSON(localAuth); err != nil {
-		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
+		response.Failed(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -94,7 +95,7 @@ func (handler *AuthHandler) LocalRegister(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie(RefreshToken, loginResponse.RefreshToken, RefreshTokenMaxAge, "/", "", true, true)
+	c.SetCookie(RefreshToken, loginResponse.RefreshToken, RefreshTokenMaxAge, "/", "", false, true)
 	response.OKWithData(c, http.StatusOK, map[string]string{
 		"accessToken": loginResponse.AccessToken,
 	})
@@ -104,7 +105,8 @@ func (handler *AuthHandler) LocalRegister(c *gin.Context) {
 func (handler *AuthHandler) Refresh(c *gin.Context) {
 	cookie, err := c.Request.Cookie(RefreshToken)
 	if err != nil {
-		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
+		log.Println("Failed to get refresh token cookie:", err.Error())
+		response.Failed(c, http.StatusUnauthorized, err.Error())
 		return
 	}
 
@@ -112,6 +114,7 @@ func (handler *AuthHandler) Refresh(c *gin.Context) {
 	refreshToken := cookie.Value
 
 	if handler.authService.IsUselessRefreshToken(ctx, refreshToken) {
+		log.Println("Refresh token is useless:", refreshToken)
 		response.FailedWithReason(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error(), "expired token error")
 		return
 	}
@@ -119,6 +122,7 @@ func (handler *AuthHandler) Refresh(c *gin.Context) {
 	claims, err := auth.ParseRefreshToken(refreshToken)
 
 	if err != nil || claims == nil {
+		log.Println("Failed to parse refresh token:", err.Error())
 		response.FailedWithReason(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error(), "invalid refresh token")
 		return
 	}
@@ -128,11 +132,13 @@ func (handler *AuthHandler) Refresh(c *gin.Context) {
 	exists, err := handler.userService.GetUserByID(ctx, userID)
 
 	if err != nil {
-		response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
+		log.Println("Failed to get user by ID:", err.Error())
+		response.Failed(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	if exists == nil {
+		log.Println("User not found:", userID)
 		response.FailedWithReason(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error(), "invalid user data")
 		return
 	}
@@ -140,11 +146,12 @@ func (handler *AuthHandler) Refresh(c *gin.Context) {
 	jwtToken, err := auth.CreateToken(exists.ID.Hex())
 
 	if err != nil {
-		response.FailedWithReason(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error(), "internal server error")
+		log.Println("Failed to create JWT token:", err.Error())
+		response.FailedWithReason(c, http.StatusUnauthorized, err.Error(), "internal server error")
 		return
 	}
 
-	c.SetCookie(RefreshToken, jwtToken.RefreshToken, RefreshTokenMaxAge, "/", "", true, true)
+	c.SetCookie(RefreshToken, jwtToken.RefreshToken, RefreshTokenMaxAge, "/", "", false, true)
 	response.OKWithData(c, http.StatusOK, map[string]string{
 		"accessToken": jwtToken.AccessToken,
 	})
@@ -171,7 +178,7 @@ func (handler *AuthHandler) Logout(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie(RefreshToken, "", -1, "/", "", true, true)
+	c.SetCookie(RefreshToken, "", -1, "/", "", false, true)
 	response.OK(c, http.StatusOK)
 }
 
@@ -196,6 +203,6 @@ func (handler *AuthHandler) DeleteAccount(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie(RefreshToken, "", -1, "/", "", true, true)
+	c.SetCookie(RefreshToken, "", -1, "/", "", false, true)
 	response.OK(c, http.StatusOK)
 }

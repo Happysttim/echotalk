@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"echotalk/internal/auth"
@@ -38,7 +38,7 @@ func main() {
 	{
 		uselessAuth := users.Group("", auth.AuthUnrequired())
 
-		uselessAuth.POST("/google", handlers.AuthHandler.GoogleLogin)
+		uselessAuth.GET("/google", handlers.AuthHandler.GoogleLogin)
 		uselessAuth.POST("/local", handlers.AuthHandler.LocalLogin)
 		uselessAuth.POST("/register", handlers.AuthHandler.LocalRegister)
 
@@ -65,7 +65,7 @@ func main() {
 		needAuth := surveys.Group("", auth.AuthRequired())
 		needAuth.POST("", handlers.SurveyHandler.CreateSurvey)
 		needAuth.PATCH("", handlers.SurveyHandler.UpdateSurvey)
-		needAuth.DELETE("", handlers.AnswerHandler.DeleteAnswer)
+		needAuth.DELETE("", handlers.SurveyHandler.DeleteSurvey)
 
 		surveys.GET("/:surveyId", handlers.SurveyHandler.GetSurvey)
 		surveys.GET("", handlers.SurveyHandler.GetSurveyPage)

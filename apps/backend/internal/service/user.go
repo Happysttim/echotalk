@@ -95,12 +95,12 @@ func (s *UserService) GetUserByProvider(ctx context.Context, authProvider model.
 	return user, nil
 }
 
-func (s *UserService) GetUserByLocal(ctx context.Context, email string, passwordHash string) (*model.User, error) {
-	if email == "" || passwordHash == "" {
+func (s *UserService) GetUserByLocal(ctx context.Context, email string) (*model.User, error) {
+	if email == "" {
 		return nil, errors.ErrInvalidInput
 	}
 
-	user, err := s.userRepo.FindByLocal(ctx, email, passwordHash)
+	user, err := s.userRepo.FindByLocal(ctx, email)
 	if err != nil {
 		return nil, err
 	}

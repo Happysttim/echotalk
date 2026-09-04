@@ -17,7 +17,7 @@ type UserRepository interface {
 	Delete(ctx context.Context, id string) error
 	FindAll(ctx context.Context) ([]*model.User, error)
 	FindByEmail(ctx context.Context, email string) (*model.User, error)
-	FindByLocal(ctx context.Context, email string, passwordHash string) (*model.User, error)
+	FindByLocal(ctx context.Context, email string) (*model.User, error)
 	FindByProvider(ctx context.Context, authProvider model.AuthProvider, providerID string) (*model.User, error)
 }
 
@@ -81,9 +81,9 @@ func (r *MongoUserRepository) FindByProvider(ctx context.Context, authProvider m
 	return &user, nil
 }
 
-func (r *MongoUserRepository) FindByLocal(ctx context.Context, email string, passwordHash string) (*model.User, error) {
+func (r *MongoUserRepository) FindByLocal(ctx context.Context, email string) (*model.User, error) {
 	var user model.User
-	if err := r.collection.FindOne(ctx, bson.M{"email": email, "password_hash": passwordHash}).Decode(&user); err != nil {
+	if err := r.collection.FindOne(ctx, bson.M{"email": email}).Decode(&user); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil
 		}

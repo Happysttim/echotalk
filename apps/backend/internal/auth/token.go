@@ -60,7 +60,7 @@ func CreateAccessToken(userID string) (string, error) {
 		accessClaims,
 	)
 
-	tokenString, err := token.SignedString(token)
+	tokenString, err := token.SignedString(secretKey)
 	if err != nil {
 		return "", err
 	}
@@ -93,7 +93,7 @@ func CreateRefreshToken(userID string) (string, time.Time, error) {
 		refreshClaims,
 	)
 
-	tokenString, err := token.SignedString(token)
+	tokenString, err := token.SignedString(secretKey)
 	if err != nil {
 		return "", time.Time{}, err
 	}
@@ -102,7 +102,7 @@ func CreateRefreshToken(userID string) (string, time.Time, error) {
 }
 
 func ParseAccessToken(tokenString string) (*model.AccessTokenClaims, error) {
-	var claims *model.AccessTokenClaims
+	claims := &model.AccessTokenClaims{}
 
 	token, err := jwt.ParseWithClaims(
 		tokenString,
@@ -128,7 +128,7 @@ func ParseAccessToken(tokenString string) (*model.AccessTokenClaims, error) {
 }
 
 func ParseRefreshToken(tokenString string) (*model.RefreshTokenClaims, error) {
-	var claims *model.RefreshTokenClaims
+	claims := &model.RefreshTokenClaims{}
 
 	token, err := jwt.ParseWithClaims(
 		tokenString,

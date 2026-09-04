@@ -34,11 +34,11 @@ type User struct {
 
 type LocalAuthRequest struct {
 	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
 }
 
 type GoogleAuthRequest struct {
-	Code string `json:"code" binding:"required"`
+	Code string `form:"code" binding:"required"`
 }
 
 type CreateUserCommand struct {

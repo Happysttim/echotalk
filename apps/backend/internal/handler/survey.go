@@ -7,6 +7,7 @@ import (
 	"echotalk/internal/service"
 	"encoding/base64"
 	"encoding/json"
+	"log"
 	"net/http"
 	"slices"
 	"strconv"
@@ -43,10 +44,12 @@ func (handler *SurveyHandler) CreateSurvey(c *gin.Context) {
 	userID := c.GetString("userID")
 
 	if userID == "" {
+		log.Println("User ID is empty")
 		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
 		return
 	}
 	if err := c.ShouldBindJSON(payload); err != nil {
+		log.Println("Error binding JSON: ", err)
 		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 		return
 	}
@@ -55,6 +58,7 @@ func (handler *SurveyHandler) CreateSurvey(c *gin.Context) {
 
 	survey, err := handler.surveyService.CreateSurvey(ctx, payload, userID)
 	if err != nil {
+		log.Println("Error creating survey: ", err)
 		response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
 		return
 	}
@@ -68,10 +72,12 @@ func (handler *SurveyHandler) DeleteSurvey(c *gin.Context) {
 	userID := c.GetString("userID")
 
 	if userID == "" {
+		log.Println("User ID is empty")
 		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
 		return
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
+		log.Println("Error binding JSON: ", err)
 		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 		return
 	}
@@ -80,17 +86,33 @@ func (handler *SurveyHandler) DeleteSurvey(c *gin.Context) {
 	survey, err := handler.surveyService.GetSurveyByID(ctx, payload.SurveyID)
 
 	if err != nil {
+		log.Println("Error fetching survey: ", err)
 		response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
 		return
 	}
 
+	if survey == nil {
+		log.Println("Survey not found")
+		response.Failed(c, http.StatusNotFound, errors.ErrNotFound.Error())
+		return
+	}
+
 	if strings.Compare(survey.AuthorID.Hex(), userID) != 0 {
+		log.Println("User is not the author of the survey")
 		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
 		return
 	}
 
 	if err := handler.answerService.DeleteAnswerBySurvey(ctx, survey.ID.Hex()); err != nil {
+		log.Println("Error deleting answers for survey: ", err)
 		response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
+		return
+	}
+
+	if err := handler.surveyService.DeleteSurvey(ctx, payload.SurveyID); err != nil {
+		log.Println("Error deleting survey: ", err)
+		response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
+		return
 	}
 
 	response.OK(c, http.StatusOK)
@@ -100,6 +122,7 @@ func (handler *SurveyHandler) DeleteSurvey(c *gin.Context) {
 func (handler *SurveyHandler) GetSurvey(c *gin.Context) {
 	surveyId := c.Param("surveyId")
 	if surveyId == "" {
+		log.Println("Survey ID is empty")
 		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 		return
 	}
@@ -108,6 +131,7 @@ func (handler *SurveyHandler) GetSurvey(c *gin.Context) {
 	survey, err := handler.surveyService.GetSurveyByID(ctx, surveyId)
 
 	if err != nil {
+		log.Println("Error fetching survey: ", err)
 		response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
 		return
 	}
@@ -121,10 +145,12 @@ func (handler *SurveyHandler) UpdateSurvey(c *gin.Context) {
 	userID := c.GetString("userID")
 
 	if userID == "" {
+		log.Println("User ID is empty")
 		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
 		return
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
+		log.Println("Error binding JSON: ", err)
 		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 		return
 	}
@@ -133,16 +159,19 @@ func (handler *SurveyHandler) UpdateSurvey(c *gin.Context) {
 	survey, err := handler.surveyService.GetSurveyByID(ctx, payload.SurveyID)
 
 	if err != nil {
+		log.Println("Error fetching survey: ", err)
 		response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
 		return
 	}
 
 	if strings.Compare(survey.AuthorID.Hex(), userID) != 0 {
+		log.Println("User is not the author of the survey")
 		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
 		return
 	}
 
 	if err := handler.surveyService.UpdateSurvey(ctx, payload); err != nil {
+		log.Println("Error updating survey: ", err)
 		response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
 		return
 	}
@@ -177,12 +206,14 @@ func (handler *SurveyHandler) GetSurveyPage(c *gin.Context) {
 	if cursorBase64 != "" {
 		decodeBytes, err := base64.RawURLEncoding.DecodeString(cursorBase64)
 		if err != nil {
+			log.Println("Error decoding cursor: ", err)
 			response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 			return
 		}
 
 		cursor := new(SurveyCursor)
 		if err := json.Unmarshal(decodeBytes, cursor); err != nil {
+			log.Println("Error unmarshaling cursor: ", err)
 			response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 			return
 		}
@@ -190,12 +221,14 @@ func (handler *SurveyHandler) GetSurveyPage(c *gin.Context) {
 		if findType == TypeUpdatedAt {
 			surveyId, err := bson.ObjectIDFromHex(cursor.SurveyID)
 			if err != nil {
+				log.Println("Error converting survey ID to ObjectID: ", err)
 				response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 				return
 			}
 
 			updatedAt, err := time.Parse(time.RFC3339Nano, cursor.UpdatedAt)
 			if err != nil {
+				log.Println("Error parsing updatedAt: ", err)
 				response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 				return
 			}
@@ -215,7 +248,8 @@ func (handler *SurveyHandler) GetSurveyPage(c *gin.Context) {
 			}
 		} else {
 			surveyID, err := bson.ObjectIDFromHex(cursor.SurveyID)
-			if err == nil {
+			if err != nil {
+				log.Println("Error converting survey ID to ObjectID: ", err)
 				response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 				return
 			}
@@ -243,6 +277,7 @@ func (handler *SurveyHandler) GetSurveyPage(c *gin.Context) {
 	)
 
 	if err != nil {
+		log.Println("Error fetching surveys: ", err)
 		response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
 		return
 	}
@@ -266,6 +301,7 @@ func (handler *SurveyHandler) GetSurveyPage(c *gin.Context) {
 
 		jsonBytes, err := json.Marshal(nextCursor)
 		if err != nil {
+			log.Println("Error marshaling next cursor: ", err)
 			response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
 			return
 		}
@@ -273,5 +309,5 @@ func (handler *SurveyHandler) GetSurveyPage(c *gin.Context) {
 		nextSkip = base64.RawURLEncoding.EncodeToString(jsonBytes)
 	}
 
-	response.OKWithData(c, http.StatusOK, map[string]any{"skip": nextSkip, "hasNext": hasNext, "surveys": surveys[:limitNumber]})
+	response.OKWithData(c, http.StatusOK, map[string]any{"skip": nextSkip, "hasNext": hasNext, "surveys": surveys})
 }

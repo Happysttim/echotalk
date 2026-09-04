@@ -26,7 +26,7 @@ func AuthRequired() gin.HandlerFunc {
 			return
 		}
 
-		c.Set("userID", tokenClaims.ID)
+		c.Set("userID", tokenClaims.UserID)
 		c.Next()
 	}
 }

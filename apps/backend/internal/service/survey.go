@@ -105,9 +105,9 @@ func (s *SurveyService) UpdateSurvey(ctx context.Context, payload *model.UpdateS
 
 	survey.Title = payload.Title
 	survey.Content = payload.Content
-	survey.IsPublic = payload.IsPublic
+	survey.IsPublic = *payload.IsPublic
 	survey.ExpiresAt = payload.ExpiresAt
-	survey.Closed = payload.Closed
+	survey.Closed = *payload.Closed
 
 	survey.UpdatedAt = time.Now()
 

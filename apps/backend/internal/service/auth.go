@@ -50,7 +50,7 @@ func (s *AuthService) findOAuthUser(ctx context.Context, authProvider model.Auth
 }
 
 func (s *AuthService) createSession(ctx context.Context, refreshToken string, expiresIn time.Time) error {
-	hashedToken, err := utils.Hash(refreshToken)
+	hashedToken, err := utils.Sha256Hash(refreshToken)
 	if err != nil {
 		return err
 	}
@@ -111,7 +111,9 @@ func (s *AuthService) LoginWithGoogle(ctx context.Context, payload *model.Google
 		return nil, err
 	}
 
-	s.createSession(ctx, jwtToken.RefreshToken, jwtToken.RefreshTokenExpiresIn)
+	if err := s.createSession(ctx, jwtToken.RefreshToken, jwtToken.RefreshTokenExpiresIn); err != nil {
+		return nil, err
+	}
 
 	return &LoginResponse{
 		User:         user,
@@ -157,7 +159,9 @@ func (s *AuthService) RegisterWithLocal(ctx context.Context, payload *model.Loca
 		return nil, err
 	}
 
-	s.createSession(ctx, jwtToken.RefreshToken, jwtToken.RefreshTokenExpiresIn)
+	if err := s.createSession(ctx, jwtToken.RefreshToken, jwtToken.RefreshTokenExpiresIn); err != nil {
+		return nil, err
+	}
 
 	return &LoginResponse{
 		User:         user,
@@ -171,13 +175,7 @@ func (s *AuthService) LoginWithLocal(ctx context.Context, payload *model.LocalAu
 		return nil, errors.ErrInvalidInput
 	}
 
-	passwordHash, err := utils.Hash(payload.Password)
-
-	if err != nil {
-		return nil, errors.ErrInternalServer
-	}
-
-	user, err := s.userService.GetUserByLocal(ctx, payload.Email, passwordHash)
+	user, err := s.userService.GetUserByLocal(ctx, payload.Email)
 	if err != nil {
 		return nil, errors.ErrInternalServer
 	}
@@ -186,12 +184,18 @@ func (s *AuthService) LoginWithLocal(ctx context.Context, payload *model.LocalAu
 		return nil, errors.ErrInvalidUser
 	}
 
+	if err := utils.CompareHash(user.PasswordHash, payload.Password); err != nil {
+		return nil, errors.ErrInvalidUser
+	}
+
 	jwtToken, err := auth.CreateToken(user.ID.Hex())
 	if err != nil {
 		return nil, err
 	}
 
-	s.createSession(ctx, jwtToken.RefreshToken, jwtToken.RefreshTokenExpiresIn)
+	if err := s.createSession(ctx, jwtToken.RefreshToken, jwtToken.RefreshTokenExpiresIn); err != nil {
+		return nil, err
+	}
 
 	return &LoginResponse{
 		User:         user,
@@ -237,7 +241,7 @@ func (s *AuthService) IsUselessRefreshToken(ctx context.Context, refreshToken st
 		return true
 	}
 
-	hashedToken, err := utils.Hash(refreshToken)
+	hashedToken, err := utils.Sha256Hash(refreshToken)
 	if err != nil {
 		return true
 	}

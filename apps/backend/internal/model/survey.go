@@ -29,8 +29,8 @@ type UpdateSurveyRequest struct {
 	SurveyID  string    `json:"survey_id" binding:"required"`
 	Title     string    `json:"title" binding:"required"`
 	Content   string    `json:"content" binding:"required"`
-	IsPublic  bool      `json:"is_public" binding:"required"`
-	Closed    bool      `json:"closed" binding:"required"`
+	IsPublic  *bool     `json:"is_public" binding:"required"`
+	Closed    *bool     `json:"closed" binding:"required"`
 	ExpiresAt time.Time `json:"expires_at" binding:"required"`
 }
 

@@ -123,7 +123,7 @@ func (r *MongoAnswerRepository) DeleteBySurveyID(ctx context.Context, id string)
 		return err
 	}
 
-	_, err = r.collection.DeleteOne(ctx, bson.M{"survey_id": objectID})
+	_, err = r.collection.DeleteMany(ctx, bson.M{"survey_id": objectID})
 	return err
 }
 
