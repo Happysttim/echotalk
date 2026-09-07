@@ -101,6 +101,39 @@ func CreateRefreshToken(userID string) (string, time.Time, error) {
 	return tokenString, refreshClaims.ExpiresAt.Time, nil
 }
 
+func CreateVerifiedToken(email string) (string, error) {
+	config := config.Config
+	secretKey := []byte(config.SecretKey)
+
+	if len(secretKey) == 0 {
+		return "", errors.ErrConfigSecretKey
+	}
+
+	now := time.Now()
+	verifiedClaims := &model.VerifiedTokenClaims{
+		Email:     email,
+		TokenType: "verified",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    "echotalk-register-verified",
+			Subject:   email,
+			ExpiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(now),
+		},
+	}
+
+	token := jwt.NewWithClaims(
+		jwt.SigningMethodHS256,
+		verifiedClaims,
+	)
+
+	tokenString, err := token.SignedString(secretKey)
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
+}
+
 func ParseAccessToken(tokenString string) (*model.AccessTokenClaims, error) {
 	claims := &model.AccessTokenClaims{}
 
@@ -148,6 +181,32 @@ func ParseRefreshToken(tokenString string) (*model.RefreshTokenClaims, error) {
 
 	claims = token.Claims.(*model.RefreshTokenClaims)
 	if claims.TokenType != "refresh" {
+		return nil, errors.ErrInvalidTokenType
+	}
+	return claims, nil
+}
+
+func ParseVerifiedToken(tokenString string) (*model.VerifiedTokenClaims, error) {
+	claims := &model.VerifiedTokenClaims{}
+
+	token, err := jwt.ParseWithClaims(
+		tokenString,
+		claims,
+		func(token *jwt.Token) (interface{}, error) {
+			return []byte(config.Config.SecretKey), nil
+		},
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !token.Valid {
+		return nil, errors.ErrInvalidToken
+	}
+
+	claims = token.Claims.(*model.VerifiedTokenClaims)
+	if claims.TokenType != "verified" {
 		return nil, errors.ErrInvalidTokenType
 	}
 	return claims, nil

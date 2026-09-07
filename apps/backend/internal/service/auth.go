@@ -81,7 +81,7 @@ func (s *AuthService) LoginWithGoogle(ctx context.Context, payload *model.Google
 		return nil, err
 	}
 
-	if oauthResult.Claims == nil {
+	if oauthResult.Claims == nil || !oauthResult.Claims.EmailVerified {
 		return nil, errors.ErrInvalidOAuthClaims
 	}
 

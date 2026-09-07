@@ -8,6 +8,7 @@ import (
 	"echotalk/internal/service"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -81,8 +82,15 @@ func (handler *AuthHandler) LocalLogin(c *gin.Context) {
 // @Router /auth/register [post]
 func (handler *AuthHandler) LocalRegister(c *gin.Context) {
 	localAuth := new(model.LocalAuthRequest)
-	if err := c.ShouldBindJSON(localAuth); err != nil {
-		response.Failed(c, http.StatusBadRequest, err.Error())
+	email := c.GetString("email")
+
+	if err := c.ShouldBindJSON(localAuth); err != nil || email == "" {
+		response.Failed(c, http.StatusBadRequest, errors.ErrInvalidInput.Error())
+		return
+	}
+
+	if strings.Compare(localAuth.Email, email) != 0 {
+		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 		return
 	}
 
@@ -96,6 +104,7 @@ func (handler *AuthHandler) LocalRegister(c *gin.Context) {
 	}
 
 	c.SetCookie(RefreshToken, loginResponse.RefreshToken, RefreshTokenMaxAge, "/", "", false, true)
+	c.SetCookie(VerifyToken, "", -1, "/", "", false, true)
 	response.OKWithData(c, http.StatusOK, map[string]string{
 		"accessToken": loginResponse.AccessToken,
 	})

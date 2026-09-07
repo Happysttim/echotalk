@@ -144,8 +144,7 @@ func (s *AnswerService) RateUp(ctx context.Context, answerID string, userID bson
 		return err
 	}
 
-	answer.RateUp += 1
-	return s.answerRepo.Update(ctx, answer)
+	return s.answerRepo.RateUp(ctx, answer.ID.Hex())
 }
 
 func (s *AnswerService) DeleteAnswer(ctx context.Context, answerID string) error {

@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -50,6 +51,19 @@ func (handler *AnswerHandler) CreateAnswer(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
+	survey, err := handler.surveyService.GetSurveyByID(ctx, payload.SurveyID)
+
+	if err != nil {
+		log.Println("Error fetching survey: ", err)
+		response.Failed(c, http.StatusUnauthorized, errors.ErrInternalServer.Error())
+		return
+	}
+
+	if survey.Closed || survey.ExpiresAt.Before(time.Now()) {
+		log.Println("Survey is closed")
+		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
+		return
+	}
 
 	answer, err := handler.answerService.CreateAnswer(ctx, payload, userID)
 	if err != nil {
@@ -64,6 +78,7 @@ func (handler *AnswerHandler) CreateAnswer(c *gin.Context) {
 // @Router /answers [delete]
 func (handler *AnswerHandler) DeleteAnswer(c *gin.Context) {
 	payload := new(model.DeleteAnswerRequest)
+	userId := c.GetString("userID")
 
 	if err := c.ShouldBindJSON(payload); err != nil {
 		log.Println("Error binding JSON: ", err)
@@ -77,6 +92,11 @@ func (handler *AnswerHandler) DeleteAnswer(c *gin.Context) {
 	if err != nil {
 		log.Println("Error fetching answer: ", err)
 		response.Failed(c, http.StatusUnauthorized, errors.ErrInternalServer.Error())
+		return
+	}
+
+	if strings.Compare(answer.AuthorID.Hex(), userId) != 0 {
+		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 		return
 	}
 

@@ -15,3 +15,9 @@ type RefreshTokenClaims struct {
 	TokenType string `json:"token_type"`
 	jwt.RegisteredClaims
 }
+
+type VerifiedTokenClaims struct {
+	Email     string `json:"email"`
+	TokenType string `json:"token_type"`
+	jwt.RegisteredClaims
+}

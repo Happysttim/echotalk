@@ -22,11 +22,18 @@ func (s *UserService) CreateUser(ctx context.Context, payload *model.CreateUserC
 	var user *model.User
 	now := time.Now()
 
+	hashNumber, err := s.userRepo.NextHashNumber(ctx, payload.Nickname)
+	if err != nil {
+		return nil, err
+	}
+
 	user = &model.User{
 		AuthProvider: payload.AuthProvider,
 		Email:        payload.Email,
 		ProviderID:   payload.ProviderID,
 		PasswordHash: payload.PasswordHash,
+		Nickname:     payload.Nickname,
+		HashNumber:   int64(hashNumber),
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}

@@ -39,11 +39,11 @@ func init() {
 
 	Client = client
 
-	if config.Config.DBName == "" {
+	if config.Config.MongoDB == "" {
 		panic("invalid mongo database name")
 	}
 
-	Database = Client.Database(config.Config.DBName)
+	Database = Client.Database(config.Config.MongoDB)
 }
 
 func InitDatabase() error {
@@ -58,12 +58,44 @@ func InitDatabase() error {
 
 	defer cancel()
 
+	initHashCounterIndexes(ctx)
+	initUserIndexes(ctx)
 	initSessionIndexes(ctx)
 	initSurveyIndexes(ctx)
 	initAnswerIndexes(ctx)
 	initRateUpIndexes(ctx)
 
 	return nil
+}
+
+func initHashCounterIndexes(ctx context.Context) error {
+	collection := Database.Collection(config.CollectionHashCounter)
+	_, err := collection.Indexes().CreateOne(
+		ctx,
+		mongo.IndexModel{
+			Keys: bson.D{
+				{Key: "_id", Value: 1},
+			},
+			Options: options.Index().SetUnique(true),
+		},
+	)
+
+	return err
+}
+
+func initUserIndexes(ctx context.Context) error {
+	collection := Database.Collection(config.CollectionUser)
+	_, err := collection.Indexes().CreateOne(
+		ctx,
+		mongo.IndexModel{
+			Keys: bson.D{
+				{Key: "email", Value: 1},
+			},
+			Options: options.Index().SetUnique(true),
+		},
+	)
+
+	return err
 }
 
 func initSessionIndexes(ctx context.Context) error {

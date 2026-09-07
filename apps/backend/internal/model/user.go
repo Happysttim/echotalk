@@ -27,6 +27,8 @@ type User struct {
 	AuthProvider AuthProvider  `bson:"auth_provider"`
 	ProviderID   string        `bson:"provider_id"`
 	Email        string        `bson:"email"`
+	Nickname     string        `bson:"nickname"`
+	HashNumber   int64         `bson:"hash_number"`
 	PasswordHash string        `bson:"password_hash"`
 	CreatedAt    time.Time     `bson:"created_at"`
 	UpdatedAt    time.Time     `bson:"updated_at"`
@@ -45,5 +47,6 @@ type CreateUserCommand struct {
 	AuthProvider AuthProvider
 	ProviderID   string
 	Email        string
+	Nickname     string
 	PasswordHash string
 }

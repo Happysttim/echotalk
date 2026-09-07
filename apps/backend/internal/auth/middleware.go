@@ -45,6 +45,25 @@ func AuthUnrequired() gin.HandlerFunc {
 	}
 }
 
+func VerifyRequired() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		cookie, err := c.Cookie("VERIFY_TOKEN")
+		if err != nil {
+			abortUnauthorized(c)
+			return
+		}
+
+		claims, err := ParseVerifiedToken(cookie)
+		if err != nil || claims == nil {
+			abortUnauthorized(c)
+			return
+		}
+
+		c.Set("email", claims.Email)
+		c.Next()
+	}
+}
+
 func extractAuthorized(authorized string) string {
 	if !strings.HasPrefix(authorized, "Bearer") {
 		return ""

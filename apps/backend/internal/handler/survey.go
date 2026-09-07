@@ -185,7 +185,7 @@ func (handler *SurveyHandler) GetSurveyPage(c *gin.Context) {
 	cursorBase64 := c.Query("cursor")
 	limit := c.Query("limit")
 
-	filter := bson.M{}
+	filter := bson.M{"is_public": true, "closed": false, "expires_at": bson.M{"$gt": time.Now()}}
 	sort := bson.D{}
 
 	if !slices.Contains(SurveyTypes, findType) {

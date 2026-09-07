@@ -15,6 +15,7 @@ import (
 type AnswerRepository interface {
 	Create(ctx context.Context, answer *model.Answer) (*model.Answer, error)
 	Update(ctx context.Context, answer *model.Answer) error
+	RateUp(ctx context.Context, answerId string) error
 	FindByID(ctx context.Context, id string) (*model.Answer, error)
 	FindBySurveyID(ctx context.Context, id string) ([]*model.Answer, error)
 	Delete(ctx context.Context, id string) error
@@ -44,6 +45,25 @@ func (r *MongoAnswerRepository) Create(ctx context.Context, answer *model.Answer
 
 func (r *MongoAnswerRepository) Update(ctx context.Context, answer *model.Answer) error {
 	_, err := r.collection.UpdateOne(ctx, bson.M{"_id": answer.ID}, bson.M{"$set": answer})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *MongoAnswerRepository) RateUp(ctx context.Context, answerId string) error {
+	objectID, err := bson.ObjectIDFromHex(answerId)
+	if err != nil {
+		return err
+	}
+
+	_, err = r.collection.UpdateOne(ctx, bson.M{"_id": objectID}, bson.M{
+		"$inc": bson.M{
+			"rate_up": 1,
+		},
+	})
+
 	if err != nil {
 		return err
 	}

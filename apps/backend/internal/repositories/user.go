@@ -9,6 +9,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type UserRepository interface {
@@ -16,17 +17,23 @@ type UserRepository interface {
 	FindByID(ctx context.Context, id string) (*model.User, error)
 	Delete(ctx context.Context, id string) error
 	FindAll(ctx context.Context) ([]*model.User, error)
+	FindByNickname(ctx context.Context, nickname string) ([]*model.User, error)
 	FindByEmail(ctx context.Context, email string) (*model.User, error)
 	FindByLocal(ctx context.Context, email string) (*model.User, error)
 	FindByProvider(ctx context.Context, authProvider model.AuthProvider, providerID string) (*model.User, error)
+	NextHashNumber(ctx context.Context, nickname string) (int64, error)
 }
 
 type MongoUserRepository struct {
-	collection *mongo.Collection
+	collection            *mongo.Collection
+	hashCounterCollection *mongo.Collection
 }
 
 func NewMongoUserRepository() UserRepository {
-	return &MongoUserRepository{collection: database.Database.Collection(config.CollectionUser)}
+	return &MongoUserRepository{
+		collection:            database.Database.Collection(config.CollectionUser),
+		hashCounterCollection: database.Database.Collection(config.CollectionHashCounter),
+	}
 }
 
 func (r *MongoUserRepository) Create(ctx context.Context, user *model.User) (*model.User, error) {
@@ -55,6 +62,21 @@ func (r *MongoUserRepository) FindByID(ctx context.Context, id string) (*model.U
 	}
 
 	return &user, nil
+}
+
+func (r *MongoUserRepository) FindByNickname(ctx context.Context, nickname string) ([]*model.User, error) {
+	cursor, err := r.collection.Find(ctx, bson.M{"nickname": nickname})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	users := make([]*model.User, 0)
+	if err := cursor.All(ctx, &users); err != nil {
+		return nil, err
+	}
+
+	return users, nil
 }
 
 func (r *MongoUserRepository) FindByEmail(ctx context.Context, email string) (*model.User, error) {
@@ -116,4 +138,34 @@ func (r *MongoUserRepository) FindAll(ctx context.Context) ([]*model.User, error
 	}
 
 	return users, nil
+}
+
+func (r *MongoUserRepository) NextHashNumber(ctx context.Context, nickname string) (int64, error) {
+	var hashCounter model.HashCounter
+	pipeline := mongo.Pipeline{
+		{
+			{Key: "$set", Value: bson.M{
+				"counter": bson.M{
+					"$add": bson.A{
+						bson.M{
+							"$ifNull": bson.A{"$counter", int64(10000000)},
+						},
+						1,
+					},
+				},
+			}},
+		},
+	}
+	err := r.hashCounterCollection.FindOneAndUpdate(
+		ctx,
+		bson.M{"_id": nickname},
+		pipeline,
+		options.FindOneAndUpdate().SetReturnDocument(options.After).SetUpsert(true),
+	).Decode(&hashCounter)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return hashCounter.Counter, nil
 }
