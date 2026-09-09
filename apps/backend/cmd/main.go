@@ -1,15 +1,21 @@
 package main
 
 import (
-	"echotalk/internal/auth"
+	"context"
 	"echotalk/internal/config"
 	"echotalk/internal/database"
 	"echotalk/internal/handler"
 	"echotalk/internal/redis"
 	"echotalk/internal/repositories"
+	"echotalk/internal/router"
+	"echotalk/internal/server"
 	"echotalk/internal/service"
+	"echotalk/internal/timer"
 	"log"
-	"strconv"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -23,6 +29,10 @@ type Handlers struct {
 
 func main() {
 	engine := gin.New()
+	ticker := timer.NewTimeTicker(time.Minute)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	defer ticker.Stop()
 
 	if err := database.InitDatabase(); err != nil {
 		panic("database initialize is fail")
@@ -35,48 +45,11 @@ func main() {
 	cfg := config.Config
 
 	handlers := GetHandler()
+	router.RegisterRoutes(engine, handlers.AuthHandler, handlers.SurveyHandler, handlers.AnswerHandler, handlers.VerifyHandler)
 
-	users := engine.Group("/auth")
-	{
-		users.GET("/refresh", handlers.AuthHandler.Refresh)
-		uselessAuth := users.Group("", auth.AuthUnrequired())
+	ticker.Start(handlers.SurveyHandler.Ticker)
 
-		uselessAuth.GET("/google", handlers.AuthHandler.GoogleLogin)
-		uselessAuth.POST("/local", handlers.AuthHandler.LocalLogin)
-		uselessAuth.POST("/register", handlers.AuthHandler.LocalRegister).Use(auth.VerifyRequired())
-
-		needAuth := users.Group("", auth.AuthRequired())
-		needAuth.GET("/logout", handlers.AuthHandler.Logout)
-		needAuth.DELETE("", handlers.AuthHandler.DeleteAccount)
-	}
-
-	answers := engine.Group("/answers")
-	{
-		needAuth := answers.Group("", auth.AuthRequired())
-		needAuth.POST("", handlers.AnswerHandler.CreateAnswer)
-		needAuth.PATCH("", handlers.AnswerHandler.UpdateAnswer)
-		needAuth.DELETE("", handlers.AnswerHandler.DeleteAnswer)
-		needAuth.POST("/rateup", handlers.AnswerHandler.RateUp)
-
-		answers.GET("/:answerId", handlers.AnswerHandler.GetAnswer)
-		answers.GET("", handlers.AnswerHandler.GetAnswerFeed)
-	}
-
-	surveys := engine.Group("/surveys")
-	{
-		needAuth := surveys.Group("", auth.AuthRequired())
-		needAuth.POST("", handlers.SurveyHandler.CreateSurvey)
-		needAuth.PATCH("", handlers.SurveyHandler.UpdateSurvey)
-		needAuth.DELETE("", handlers.SurveyHandler.DeleteSurvey)
-
-		surveys.GET("/:surveyId", handlers.SurveyHandler.GetSurvey)
-		surveys.GET("", handlers.SurveyHandler.GetSurveyPage)
-	}
-
-	engine.GET("/verify/:email", handlers.VerifyHandler.EmailVerify).Use(auth.AuthUnrequired())
-	engine.GET("/code/:code", handlers.VerifyHandler.CodeVerify).Use(auth.AuthUnrequired())
-
-	if err := engine.Run(":" + strconv.Itoa(int(cfg.Port))); err != nil {
+	if err := server.Run(ctx, cfg.Port, engine); err != nil {
 		log.Fatalln(err)
 	}
 }

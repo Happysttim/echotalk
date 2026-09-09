@@ -170,12 +170,40 @@ func (s *AuthService) RegisterWithLocal(ctx context.Context, payload *model.Loca
 	}, nil
 }
 
+func (s *AuthService) ChangeWithLocal(ctx context.Context, payload *model.LocalAuthRequest) error {
+	if payload == nil {
+		return errors.ErrInvalidInput
+	}
+
+	user, err := s.userService.GetUserByEmailProvider(ctx, payload.Email, model.AuthProviderLocal)
+	if err != nil {
+		return errors.ErrInternalServer
+	}
+
+	if user == nil {
+		return errors.ErrInvalidUser
+	}
+
+	passwordHash, err := utils.Hash(payload.Password)
+
+	if err != nil {
+		return errors.ErrInternalServer
+	}
+
+	user.PasswordHash = passwordHash
+	if err := s.userService.UpdateUser(ctx, user); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *AuthService) LoginWithLocal(ctx context.Context, payload *model.LocalAuthRequest) (*LoginResponse, error) {
 	if payload == nil {
 		return nil, errors.ErrInvalidInput
 	}
 
-	user, err := s.userService.GetUserByLocal(ctx, payload.Email)
+	user, err := s.userService.GetUserByEmailProvider(ctx, payload.Email, model.AuthProviderLocal)
 	if err != nil {
 		return nil, errors.ErrInternalServer
 	}
@@ -252,4 +280,27 @@ func (s *AuthService) IsUselessRefreshToken(ctx context.Context, refreshToken st
 	}
 
 	return session.ExpiredAt.Before(time.Now()) || session.Revoked
+}
+
+func (s *AuthService) RevokeRefreshToken(ctx context.Context, refreshToken string) error {
+	if refreshToken == "" {
+		return errors.ErrInvalidInput
+	}
+
+	hashedToken, err := utils.Sha256Hash(refreshToken)
+	if err != nil {
+		return err
+	}
+	session, err := s.sessionRepo.FindByToken(ctx, hashedToken)
+
+	if err != nil || session == nil {
+		return errors.ErrInvalidToken
+	}
+
+	session.Revoked = true
+	if err := s.sessionRepo.Update(ctx, session); err != nil {
+		return err
+	}
+
+	return nil
 }

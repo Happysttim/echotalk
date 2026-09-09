@@ -53,9 +53,9 @@ func (handler *AnswerHandler) CreateAnswer(c *gin.Context) {
 	ctx := c.Request.Context()
 	survey, err := handler.surveyService.GetSurveyByID(ctx, payload.SurveyID)
 
-	if err != nil {
-		log.Println("Error fetching survey: ", err)
-		response.Failed(c, http.StatusUnauthorized, errors.ErrInternalServer.Error())
+	if err != nil || survey == nil {
+		log.Println("Error fetching survey")
+		response.Failed(c, http.StatusNotFound, errors.ErrSurveyNotFound.Error())
 		return
 	}
 
@@ -89,9 +89,9 @@ func (handler *AnswerHandler) DeleteAnswer(c *gin.Context) {
 	ctx := c.Request.Context()
 	answer, err := handler.answerService.GetAnswerByID(ctx, payload.AnswerID)
 
-	if err != nil {
-		log.Println("Error fetching answer: ", err)
-		response.Failed(c, http.StatusUnauthorized, errors.ErrInternalServer.Error())
+	if err != nil || answer == nil {
+		log.Println("Error fetching answer")
+		response.Failed(c, http.StatusNotFound, errors.ErrAnswerNotFound.Error())
 		return
 	}
 
@@ -121,9 +121,9 @@ func (handler *AnswerHandler) GetAnswer(c *gin.Context) {
 	ctx := c.Request.Context()
 	answer, err := handler.answerService.GetAnswerByID(ctx, answerId)
 
-	if err != nil {
-		log.Println("Error fetching answer: ", err)
-		response.Failed(c, http.StatusUnauthorized, errors.ErrInternalServer.Error())
+	if err != nil || answer == nil {
+		log.Println("Error fetching answer")
+		response.Failed(c, http.StatusNotFound, errors.ErrAnswerNotFound.Error())
 		return
 	}
 
@@ -149,9 +149,9 @@ func (handler *AnswerHandler) UpdateAnswer(c *gin.Context) {
 	ctx := c.Request.Context()
 	answer, err := handler.answerService.GetAnswerByID(ctx, payload.AnswerID)
 
-	if err != nil {
-		log.Println("Error fetching answer: ", err)
-		response.Failed(c, http.StatusUnauthorized, errors.ErrInternalServer.Error())
+	if err != nil || answer == nil {
+		log.Println("Error fetching answer")
+		response.Failed(c, http.StatusNotFound, errors.ErrAnswerNotFound.Error())
 		return
 	}
 

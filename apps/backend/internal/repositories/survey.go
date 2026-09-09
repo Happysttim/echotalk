@@ -6,6 +6,7 @@ import (
 	"echotalk/internal/database"
 	"echotalk/internal/model"
 	"errors"
+	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -16,6 +17,7 @@ type SurveyRepository interface {
 	Create(ctx context.Context, survey *model.Survey) (*model.Survey, error)
 	FindByID(ctx context.Context, id string) (*model.Survey, error)
 	Update(ctx context.Context, survey *model.Survey) error
+	CheckExpires(ctx context.Context) error
 	Delete(ctx context.Context, id string) error
 	FindAll(ctx context.Context) ([]*model.Survey, error)
 	FindByFilter(ctx context.Context, filter bson.M, opts ...options.Lister[options.FindOptions]) ([]*model.Survey, error)
@@ -42,6 +44,23 @@ func (r *MongoSurveyRepository) Create(ctx context.Context, survey *model.Survey
 
 func (r *MongoSurveyRepository) Update(ctx context.Context, survey *model.Survey) error {
 	_, err := r.collection.UpdateOne(ctx, bson.M{"_id": survey.ID}, bson.M{"$set": survey})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *MongoSurveyRepository) CheckExpires(ctx context.Context) error {
+	_, err := r.collection.UpdateMany(ctx, bson.M{
+		"closed":     false,
+		"expires_at": bson.M{"$lte": time.Now()},
+	}, bson.M{
+		"$set": bson.M{
+			"closed": true,
+		},
+	})
+
 	if err != nil {
 		return err
 	}

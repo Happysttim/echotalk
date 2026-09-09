@@ -15,11 +15,12 @@ import (
 type UserRepository interface {
 	Create(ctx context.Context, user *model.User) (*model.User, error)
 	FindByID(ctx context.Context, id string) (*model.User, error)
+	Update(ctx context.Context, user *model.User) error
 	Delete(ctx context.Context, id string) error
 	FindAll(ctx context.Context) ([]*model.User, error)
 	FindByNickname(ctx context.Context, nickname string) ([]*model.User, error)
 	FindByEmail(ctx context.Context, email string) (*model.User, error)
-	FindByLocal(ctx context.Context, email string) (*model.User, error)
+	FindByEmailProvider(ctx context.Context, email string, provider model.AuthProvider) (*model.User, error)
 	FindByProvider(ctx context.Context, authProvider model.AuthProvider, providerID string) (*model.User, error)
 	NextHashNumber(ctx context.Context, nickname string) (int64, error)
 }
@@ -45,6 +46,11 @@ func (r *MongoUserRepository) Create(ctx context.Context, user *model.User) (*mo
 	doc := user
 	doc.ID = result.InsertedID.(bson.ObjectID)
 	return doc, nil
+}
+
+func (r *MongoUserRepository) Update(ctx context.Context, user *model.User) error {
+	_, err := r.collection.UpdateOne(ctx, bson.M{"_id": user.ID}, bson.M{"$set": user})
+	return err
 }
 
 func (r *MongoUserRepository) FindByID(ctx context.Context, id string) (*model.User, error) {
@@ -91,9 +97,9 @@ func (r *MongoUserRepository) FindByEmail(ctx context.Context, email string) (*m
 	return &user, nil
 }
 
-func (r *MongoUserRepository) FindByProvider(ctx context.Context, authProvider model.AuthProvider, providerID string) (*model.User, error) {
+func (r *MongoUserRepository) FindByEmailProvider(ctx context.Context, email string, provider model.AuthProvider) (*model.User, error) {
 	var user model.User
-	if err := r.collection.FindOne(ctx, bson.M{"auth_provider": authProvider, "provider_id": providerID}).Decode(&user); err != nil {
+	if err := r.collection.FindOne(ctx, bson.M{"email": email, "auth_provider": provider}).Decode(&user); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil
 		}
@@ -103,9 +109,9 @@ func (r *MongoUserRepository) FindByProvider(ctx context.Context, authProvider m
 	return &user, nil
 }
 
-func (r *MongoUserRepository) FindByLocal(ctx context.Context, email string) (*model.User, error) {
+func (r *MongoUserRepository) FindByProvider(ctx context.Context, authProvider model.AuthProvider, providerID string) (*model.User, error) {
 	var user model.User
-	if err := r.collection.FindOne(ctx, bson.M{"email": email}).Decode(&user); err != nil {
+	if err := r.collection.FindOne(ctx, bson.M{"auth_provider": authProvider, "provider_id": providerID}).Decode(&user); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil
 		}

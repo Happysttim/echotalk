@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"echotalk/internal/errors"
 	"echotalk/internal/model"
 	"echotalk/internal/response"
@@ -194,8 +195,8 @@ func (handler *SurveyHandler) GetSurveyPage(c *gin.Context) {
 
 	if findType == TypeUpdatedAt {
 		sort = bson.D{
-			{Key: "_id", Value: -1},
 			{Key: "updated_at", Value: -1},
+			{Key: "_id", Value: -1},
 		}
 	} else {
 		sort = bson.D{
@@ -310,4 +311,8 @@ func (handler *SurveyHandler) GetSurveyPage(c *gin.Context) {
 	}
 
 	response.OKWithData(c, http.StatusOK, map[string]any{"skip": nextSkip, "hasNext": hasNext, "surveys": surveys})
+}
+
+func (handler *SurveyHandler) Ticker(ctx context.Context) {
+	handler.surveyService.CheckExpire(ctx)
 }

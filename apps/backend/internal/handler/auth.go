@@ -69,7 +69,7 @@ func (handler *AuthHandler) LocalLogin(c *gin.Context) {
 	loginResponse, err := handler.authService.LoginWithLocal(ctx, localAuth)
 
 	if err != nil {
-		response.Failed(c, http.StatusInternalServerError, err.Error())
+		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
 		return
 	}
 
@@ -108,6 +108,30 @@ func (handler *AuthHandler) LocalRegister(c *gin.Context) {
 	response.OKWithData(c, http.StatusOK, map[string]string{
 		"accessToken": loginResponse.AccessToken,
 	})
+}
+
+// @Router /auth/change [post]
+func (handler *AuthHandler) PasswordChange(c *gin.Context) {
+	localAuth := new(model.LocalAuthRequest)
+	email := c.GetString("email")
+
+	if err := c.ShouldBindJSON(localAuth); err != nil || email == "" {
+		response.Failed(c, http.StatusBadRequest, errors.ErrInvalidInput.Error())
+		return
+	}
+
+	if strings.Compare(localAuth.Email, email) != 0 {
+		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
+		return
+	}
+
+	ctx := c.Request.Context()
+	if err := handler.authService.ChangeWithLocal(ctx, localAuth); err != nil {
+		response.Failed(c, http.StatusBadRequest, errors.ErrInvalidInput.Error())
+		return
+	}
+	c.SetCookie(VerifyToken, "", -1, "/", "", false, true)
+	response.OK(c, http.StatusAccepted)
 }
 
 // @Router /auth/refresh [get]
@@ -157,6 +181,11 @@ func (handler *AuthHandler) Refresh(c *gin.Context) {
 	if err != nil {
 		log.Println("Failed to create JWT token:", err.Error())
 		response.FailedWithReason(c, http.StatusUnauthorized, err.Error(), "internal server error")
+		return
+	}
+
+	if err := handler.authService.RevokeRefreshToken(ctx, refreshToken); err != nil {
+		response.Failed(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 

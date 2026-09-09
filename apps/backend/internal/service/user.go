@@ -68,6 +68,14 @@ func (s *UserService) DeleteUser(ctx context.Context, id string) error {
 	return nil
 }
 
+func (s *UserService) UpdateUser(ctx context.Context, user *model.User) error {
+	if user == nil {
+		return errors.ErrInvalidInput
+	}
+
+	return s.userRepo.Update(ctx, user)
+}
+
 func (s *UserService) GetAllUsers(ctx context.Context) ([]*model.User, error) {
 	users, err := s.userRepo.FindAll(ctx)
 	if err != nil {
@@ -89,12 +97,12 @@ func (s *UserService) GetUserByEmail(ctx context.Context, email string) (*model.
 	return user, nil
 }
 
-func (s *UserService) GetUserByProvider(ctx context.Context, authProvider model.AuthProvider, providerID string) (*model.User, error) {
-	if !authProvider.IsValid() || providerID == "" {
+func (s *UserService) GetUserByEmailProvider(ctx context.Context, email string, provider model.AuthProvider) (*model.User, error) {
+	if email == "" || !provider.IsValid() {
 		return nil, errors.ErrInvalidInput
 	}
 
-	user, err := s.userRepo.FindByProvider(ctx, authProvider, providerID)
+	user, err := s.userRepo.FindByEmailProvider(ctx, email, provider)
 	if err != nil {
 		return nil, err
 	}
@@ -102,12 +110,12 @@ func (s *UserService) GetUserByProvider(ctx context.Context, authProvider model.
 	return user, nil
 }
 
-func (s *UserService) GetUserByLocal(ctx context.Context, email string) (*model.User, error) {
-	if email == "" {
+func (s *UserService) GetUserByProvider(ctx context.Context, authProvider model.AuthProvider, providerID string) (*model.User, error) {
+	if !authProvider.IsValid() || providerID == "" {
 		return nil, errors.ErrInvalidInput
 	}
 
-	user, err := s.userRepo.FindByLocal(ctx, email)
+	user, err := s.userRepo.FindByProvider(ctx, authProvider, providerID)
 	if err != nil {
 		return nil, err
 	}

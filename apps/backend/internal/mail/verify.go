@@ -9,7 +9,7 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-func SendVerifyEmail(to string, verifyLink string) error {
+func SendVerifyEmail(to string, verifyLink string, location string) error {
 	tmpl, err := template.ParseFiles("template.html")
 	if err != nil {
 		return fmt.Errorf("failed to parse verify email template: %w", err)
@@ -17,7 +17,7 @@ func SendVerifyEmail(to string, verifyLink string) error {
 
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, map[string]string{
-		"VerifyLink": config.Config.WebURL + "/register?verify=" + verifyLink,
+		"VerifyLink": config.Config.WebURL + "/" + location + "?verify=" + verifyLink,
 	}); err != nil {
 		return fmt.Errorf("failed to execute verify email template: %w", err)
 	}

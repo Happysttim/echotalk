@@ -121,3 +121,7 @@ func (s *SurveyService) DeleteSurvey(ctx context.Context, surveyID string) error
 
 	return s.surveyRepo.Delete(ctx, surveyID)
 }
+
+func (s *SurveyService) CheckExpire(ctx context.Context) error {
+	return s.surveyRepo.CheckExpires(ctx)
+}
