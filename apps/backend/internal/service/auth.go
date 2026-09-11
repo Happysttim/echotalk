@@ -96,6 +96,7 @@ func (s *AuthService) LoginWithGoogle(ctx context.Context, payload *model.Google
 			AuthProvider: model.AuthProviderGoogle,
 			ProviderID:   oauthResult.Claims.Sub,
 			Email:        oauthResult.Claims.Email,
+			Nickname:     oauthResult.Claims.Name,
 		}
 
 		user, err = s.userService.CreateUser(ctx, command)
@@ -122,7 +123,7 @@ func (s *AuthService) LoginWithGoogle(ctx context.Context, payload *model.Google
 	}, nil
 }
 
-func (s *AuthService) RegisterWithLocal(ctx context.Context, payload *model.LocalAuthRequest) (*LoginResponse, error) {
+func (s *AuthService) RegisterWithLocal(ctx context.Context, payload *model.LocalAuthRegisterRequest) (*LoginResponse, error) {
 	if payload == nil {
 		return nil, errors.ErrInvalidInput
 	}
@@ -146,6 +147,7 @@ func (s *AuthService) RegisterWithLocal(ctx context.Context, payload *model.Loca
 		AuthProvider: model.AuthProviderLocal,
 		Email:        payload.Email,
 		PasswordHash: passwordHash,
+		Nickname:     payload.Nickname,
 	}
 
 	user, err := s.userService.CreateUser(ctx, command)
@@ -237,7 +239,7 @@ func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 		return errors.ErrInvalidInput
 	}
 
-	hashedToken, err := utils.Hash(refreshToken)
+	hashedToken, err := utils.Sha256Hash(refreshToken)
 	if err != nil {
 		return err
 	}

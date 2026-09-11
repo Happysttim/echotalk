@@ -2,7 +2,7 @@
   "name": "@apps/backend",
   "private": true,
   "scripts": {
-    "dev": "go run ./cmd/main",
+    "dev": "go run ./cmd/",
     "build": "go build -o dist/server ./cmd",
     "test": "go test ./...",
     "clean": "rm -rf dist"

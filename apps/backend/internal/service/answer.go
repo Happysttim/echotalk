@@ -25,19 +25,28 @@ func NewAnswerService(answerRepo repositories.AnswerRepository, rateUpRepo repos
 	}
 }
 
-func (s *AnswerService) CreateAnswer(ctx context.Context, payload *model.CreateAnswerRequest, authorID string) (*model.Answer, error) {
+func (s *AnswerService) CreateAnswer(ctx context.Context, payload *model.CreateAnswerRequest) (*model.Answer, error) {
 	if payload == nil {
 		return nil, errors.ErrInvalidAnswer
 	}
 
-	user, err := s.userService.GetUserByID(ctx, authorID)
+	var authorID bson.ObjectID
 
-	if err != nil {
-		return nil, errors.ErrInternalServer
-	}
+	if !payload.IsAnonymous {
+		if payload.AuthorID == "" {
+			return nil, errors.ErrInvalidUser
+		}
+		user, err := s.userService.GetUserByID(ctx, payload.AuthorID)
 
-	if user == nil {
-		return nil, errors.ErrInvalidUser
+		if err != nil {
+			return nil, errors.ErrInternalServer
+		}
+
+		if user == nil {
+			return nil, errors.ErrInvalidUser
+		}
+
+		authorID = user.ID
 	}
 
 	surveyObjectID, err := bson.ObjectIDFromHex(payload.SurveyID)
@@ -46,12 +55,21 @@ func (s *AnswerService) CreateAnswer(ctx context.Context, payload *model.CreateA
 		return nil, errors.ErrInternalServer
 	}
 
+	anonyPassword, err := payload.AnonymousPassword()
+
+	if err != nil {
+		return nil, err
+	}
+
 	doc := &model.Answer{
-		Content:   payload.Content,
-		SurveyID:  surveyObjectID,
-		AuthorID:  user.ID,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		Content:        payload.Content,
+		SurveyID:       surveyObjectID,
+		AuthorID:       authorID,
+		IsAnonymous:    payload.IsAnonymous,
+		Anonymous:      payload.AnonymousName(),
+		AnswerPassword: anonyPassword,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
 	}
 
 	return s.answerRepo.Create(ctx, doc)

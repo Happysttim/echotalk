@@ -74,7 +74,7 @@ func (r RedisUser) GetDelVerify(ctx context.Context, verifyLink string, verifyTy
 		return "", err
 	}
 
-	_, err = RedisClient.GetDel(ctx, email).Result()
+	_, err = RedisClient.GetDel(ctx, strings.Join([]string{string(verifyType), email}, ":")).Result()
 	if err != nil {
 		return "", err
 	}

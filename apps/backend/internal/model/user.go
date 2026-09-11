@@ -34,6 +34,12 @@ type User struct {
 	UpdatedAt    time.Time     `bson:"updated_at"`
 }
 
+type LocalAuthRegisterRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+	Nickname string `json:"nickname" binding:"required"`
+}
+
 type LocalAuthRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`

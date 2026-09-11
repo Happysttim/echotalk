@@ -21,8 +21,8 @@ func RegisterRoutes(
 
 		uselessAuth.GET("/google", authHandler.GoogleLogin)
 		uselessAuth.POST("/local", authHandler.LocalLogin)
-		uselessAuth.POST("/register", authHandler.LocalRegister).Use(auth.VerifyRequired())
-		uselessAuth.POST("/change", authHandler.PasswordChange).Use(auth.VerifyRequired())
+		uselessAuth.POST("/register", auth.VerifyRequired(), authHandler.LocalRegister)
+		uselessAuth.POST("/change", auth.VerifyRequired(), authHandler.PasswordChange)
 
 		needAuth := users.Group("", auth.AuthRequired())
 		needAuth.GET("/logout", authHandler.Logout)
@@ -31,10 +31,12 @@ func RegisterRoutes(
 
 	answers := engine.Group("/answers")
 	{
+		answers.POST("", auth.AuthNoRequired(), answerHandler.CreateAnswer)
+		answers.DELETE("", auth.AuthNoRequired(), answerHandler.DeleteAnswer)
+
 		needAuth := answers.Group("", auth.AuthRequired())
-		needAuth.POST("", answerHandler.CreateAnswer)
+		needAuth.GET("/me", answerHandler.GetMyAnswers)
 		needAuth.PATCH("", answerHandler.UpdateAnswer)
-		needAuth.DELETE("", answerHandler.DeleteAnswer)
 		needAuth.POST("/rateup", answerHandler.RateUp)
 
 		answers.GET("/:answerId", answerHandler.GetAnswer)
@@ -47,11 +49,13 @@ func RegisterRoutes(
 		needAuth.POST("", surveyHandler.CreateSurvey)
 		needAuth.PATCH("", surveyHandler.UpdateSurvey)
 		needAuth.DELETE("", surveyHandler.DeleteSurvey)
+		needAuth.GET("/me", surveyHandler.GetMySurveyPage)
 
 		surveys.GET("/:surveyId", surveyHandler.GetSurvey)
 		surveys.GET("", surveyHandler.GetSurveyPage)
 	}
 
-	engine.GET("/verify", verifyHandler.EmailVerify).Use(auth.AuthUnrequired())
-	engine.GET("/code", verifyHandler.CodeVerify).Use(auth.AuthUnrequired())
+	engine.GET("/verify", auth.AuthUnrequired(), verifyHandler.EmailVerify)
+	engine.GET("/verify/me", auth.VerifyRequired(), verifyHandler.VerifyMe)
+	engine.GET("/code", auth.AuthUnrequired(), verifyHandler.CodeVerify)
 }

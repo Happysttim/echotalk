@@ -31,6 +31,33 @@ func AuthRequired() gin.HandlerFunc {
 	}
 }
 
+func AuthNoRequired() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authorized := c.GetHeader("Authorization")
+		if authorized == "" {
+			c.Next()
+			return
+		}
+
+		tokenString := extractAuthorized(authorized)
+
+		if tokenString == "" {
+			abortUnauthorized(c)
+			return
+		}
+
+		tokenClaims, err := ParseAccessToken(tokenString)
+
+		if err != nil || tokenClaims == nil || tokenClaims.UserID == "" || tokenClaims.TokenType != "access" {
+			abortUnauthorized(c)
+			return
+		}
+
+		c.Set("userID", tokenClaims.UserID)
+		c.Next()
+	}
+}
+
 func AuthUnrequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authorized := c.GetHeader("Authorization")

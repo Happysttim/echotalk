@@ -1,0 +1,69 @@
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: echotalk-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: echotalk
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - echotalk-network
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok' || mongo --quiet --eval 'db.runCommand({ ping: 1 }).ok'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: echotalk-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - echotalk-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: echotalk-backend
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./apps/backend/.env
+    environment:
+      MONGODB_URI: mongodb://mongo:27017
+      DB_NAME: echotalk
+      REDIS_ADDR: redis:6379
+      PORT: "8080"
+    volumes:
+      - ./apps/backend/.env:/app/.env:ro
+    networks:
+      - echotalk-network
+
+volumes:
+  mongo_data:
+  redis_data:
+
+networks:
+  echotalk-network:
+    driver: bridge

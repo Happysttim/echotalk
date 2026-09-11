@@ -1,19 +1,19 @@
-import globals from "globals";
-import tseslint from "typescript-eslint";
-import pluginReact from "eslint-plugin-react";
-import { defineConfig } from "eslint/config";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import globals from 'globals';
+import tseslint from 'typescript-eslint';
+import pluginReact from 'eslint-plugin-react';
+import { defineConfig } from 'eslint/config';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export default defineConfig([
   {
-    ignores: ["**/eslint.config.*", "**/vite.config.*"],
+    ignores: ['**/eslint.config.*', '**/vite.config.*'],
   },
   {
-    files: ["src/**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
+    files: ['src/**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     languageOptions: {
       globals: globals.browser,
       parserOptions: {
@@ -26,7 +26,13 @@ export default defineConfig([
   ...tseslint.configs.recommendedTypeChecked,
   {
     ...pluginReact.configs.flat.recommended,
-    files: ["src/**/*.{jsx,tsx}"],
+    files: ['src/**/*.{jsx,tsx}'],
+    settings: { react: { version: 'detect' } },
+    rules: {
+      ...pluginReact.configs.flat.recommended.rules,
+      'react/react-in-jsx-scope': 'off',
+      'react/prop-types': 'off',
+    },
     languageOptions: {
       ...pluginReact.configs.flat.recommended?.languageOptions,
       globals: {

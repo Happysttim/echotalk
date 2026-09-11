@@ -1,0 +1,259 @@
+.auth-layout {
+  grid-template-columns: 440px 440px;
+  align-items: stretch;
+  gap: 140px;
+  width: calc(100% - 96px);
+  max-width: 1100px;
+  margin: 64px auto 75px;
+  display: grid;
+}
+.auth-aside {
+  background: #edf4ef;
+  border-radius: 3px;
+  flex-direction: column;
+  min-height: 620px;
+  padding: 50px 42px;
+  display: flex;
+}
+.auth-aside h2 {
+  letter-spacing: -1.5px;
+  margin-top: 38px;
+  font-size: 41px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.auth-aside h2 span {
+  color: #116149;
+}
+.auth-aside-bottom {
+  color: #37674e;
+  align-items: center;
+  gap: 20px;
+  margin-top: auto;
+  padding-top: 60px;
+  display: flex;
+}
+.auth-aside-bottom p {
+  font-size: 14px;
+  line-height: 1.85;
+}
+.back-link {
+  color: #6a776e;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  margin-bottom: 22px;
+  font-size: 14px;
+  display: inline-flex;
+}
+.auth-form h1 {
+  letter-spacing: -0.8px;
+  margin: 4px 0 10px;
+  font-size: 32px;
+  font-weight: 700;
+}
+.form-intro {
+  color: #6b776e;
+  margin-bottom: 28px;
+  font-size: 15px;
+  line-height: 1.8;
+}
+.google {
+  color: #35453b;
+  background: #fff;
+  border-color: #cbd5ce;
+}
+.google:hover {
+  background: #f4f6f4;
+}
+.google-g {
+  color: #4285f4;
+  margin-right: 8px;
+  font-family: Arial, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+}
+.divider {
+  color: #859087;
+  align-items: center;
+  gap: 14px;
+  margin: 25px 0;
+  font-size: 12px;
+  display: flex;
+}
+.divider:before,
+.divider:after {
+  content: '';
+  background: #e1e6e2;
+  flex: 1;
+  height: 1px;
+}
+.field {
+  margin: 0 0 22px;
+}
+.field label {
+  margin-bottom: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  display: block;
+}
+.field input,
+.field textarea {
+  color: #253c2d;
+  resize: vertical;
+  background: #fff;
+  border: 1px solid #c9d4cc;
+  border-radius: 6px;
+  width: 100%;
+  min-width: 0;
+  min-height: 50px;
+  padding: 12px 14px;
+  font-size: 16px;
+  line-height: 1.65;
+}
+.field input::placeholder,
+.field textarea::placeholder {
+  color: #8b958e;
+}
+.field input[aria-invalid='true'] {
+  border-color: #b52f34;
+}
+.input-wrap {
+  position: relative;
+}
+.input-wrap:has(.eye) input {
+  padding-right: 49px;
+}
+.eye {
+  color: #758178;
+  place-items: center;
+  min-width: 46px;
+  min-height: 46px;
+  display: grid;
+  position: absolute;
+  top: 2px;
+  right: 2px;
+}
+.help,
+.field-error {
+  color: #78847b;
+  margin-top: 7px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.field-error {
+  color: #b52f34;
+}
+.auth-links {
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  margin-top: 22px;
+  font-size: 14px;
+  display: flex;
+}
+.auth-links a {
+  color: #5c6d61;
+  padding: 10px 0;
+}
+.auth-links span {
+  background: #d6dfd9;
+  width: 1px;
+  height: 14px;
+}
+.auth-bottom {
+  color: #758178;
+  text-align: center;
+  margin-top: 24px;
+  font-size: 13px;
+}
+.auth-bottom a {
+  color: #116149;
+  margin-left: 6px;
+  text-decoration: underline;
+}
+.steps {
+  gap: 22px;
+  margin: 25px 0 32px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+}
+.steps li {
+  color: #8b958e;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  display: flex;
+}
+.steps li > span {
+  background: #eef2ef;
+  border-radius: 50%;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  font-size: 11px;
+  display: grid;
+}
+.steps li.current {
+  color: #116149;
+}
+.steps li.current > span {
+  color: #fff;
+  background: #116149;
+}
+.email-summary {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  padding: 13px 0 22px;
+  font-size: 14px;
+  display: flex;
+}
+.email-summary button {
+  color: #687f6e;
+  min-height: 44px;
+  margin-left: auto;
+  text-decoration: underline;
+}
+.resend {
+  color: #58745f;
+  margin: -8px 0 18px;
+}
+.verified {
+  color: #116149;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  font-size: 14px;
+  display: flex;
+}
+.success-state {
+  padding: 35px 0;
+}
+.success-state > svg {
+  color: #116149;
+  background: #edf5ef;
+  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 24px;
+  padding: 13px;
+}
+.success-state h2 {
+  margin-bottom: 12px;
+  font-size: 23px;
+}
+.success-state p {
+  color: #78847b;
+  margin-bottom: 32px;
+  font-size: 14px;
+}
+.demo-notice {
+  color: #4c6254;
+  background: #f3f6f4;
+  border-left: 3px solid #92a89a;
+  margin-top: 20px;
+  padding: 14px 16px;
+  font-size: 13px;
+}

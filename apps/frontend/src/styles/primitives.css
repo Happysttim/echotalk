@@ -1,0 +1,247 @@
+/* Radix primitives share the supplied design tokens. */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgb(20 35 26 / 38%);
+}
+.dialog-content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 50;
+  width: min(440px, calc(100% - 40px));
+  max-height: calc(100dvh - 40px);
+  overflow: auto;
+  border-radius: 8px;
+  background: white;
+  padding: 28px;
+  box-shadow: 0 12px 50px #173b2426;
+}
+.dialog-content h2 {
+  margin-bottom: 12px;
+  font-weight: 650;
+  font-size: 22px;
+}
+.dialog-content > p {
+  margin-bottom: 24px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--muted-foreground);
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+.btn.danger {
+  background: var(--destructive);
+  color: #fff;
+  border-color: var(--destructive);
+}
+.text-link.danger {
+  color: var(--destructive);
+}
+.menu-content {
+  z-index: 60;
+  min-width: 140px;
+  padding: 5px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 6px 24px #173b241a;
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 14px;
+  border-radius: 3px;
+  cursor: pointer;
+  outline: none;
+}
+.menu-item[data-highlighted] {
+  color: var(--primary);
+  background: #edf4ef;
+}
+.menu-item[data-disabled] {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.menu-label {
+  padding: 9px 12px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.sort-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 44px;
+  padding: 8px;
+  background: white;
+}
+.public-switch {
+  border: none;
+  border-radius: 30px;
+  width: 44px;
+  height: 26px;
+  padding: 2px;
+  background: #c9d4cc;
+  position: relative;
+}
+.public-switch::before {
+  content: '';
+  position: absolute;
+  inset: -9px 0;
+}
+.public-switch[data-state='checked'] {
+  background: var(--primary);
+}
+.switch-thumb {
+  display: block;
+  background: white;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  transition: transform 0.15s;
+}
+.switch-thumb[data-state='checked'] {
+  transform: translateX(18px);
+}
+.loading-rows i {
+  display: block;
+  height: 12px;
+  margin-bottom: 12px;
+  border-radius: 4px;
+  background: #edf1ee;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+.loading-rows i:first-child {
+  width: 24%;
+  height: 20px;
+}
+.loading-rows i:nth-child(2) {
+  width: 82%;
+}
+.loading-rows i:last-child {
+  width: 58%;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+.inline-error {
+  margin: 14px 0;
+}
+.mobile-owner {
+  display: none;
+}
+.product {
+  display: flex;
+  flex-direction: column;
+}
+.product > main {
+  flex: 1;
+}
+.auth-form {
+  min-width: 0;
+}
+.auth-links a,
+.text-link,
+.vote {
+  min-height: 44px;
+}
+input:focus,
+textarea:focus {
+  border-color: var(--primary);
+}
+.help {
+  margin-bottom: 0;
+}
+.question-content .author-line time {
+  white-space: nowrap;
+}
+.writing-grid .field textarea {
+  min-height: 250px;
+}
+@media (min-width: 768px) and (max-width: 1100px) {
+  .auth-layout {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 32px;
+  }
+  .auth-aside {
+    padding: 32px 24px;
+  }
+  .auth-aside h2 {
+    font-size: clamp(26px, 3.3vw, 34px);
+  }
+  .auth-aside-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}
+@media (max-width: 767px) {
+  .auth-layout {
+    max-width: 440px;
+  }
+  .header-actions .btn,
+  .feed-title .btn {
+    min-height: 44px;
+  }
+  .auth-form .google {
+    min-height: 48px;
+    font-size: 14px;
+  }
+  .mobile-owner {
+    display: block;
+  }
+  .mobile-owner .owner-tools {
+    flex-flow: row wrap;
+    gap: 8px 20px;
+    margin-top: 20px;
+    padding-top: 15px;
+  }
+  .mobile-owner .owner-tools .eyebrow {
+    width: 100%;
+    margin: 0;
+  }
+  .mobile-owner .owner-tools .text-link {
+    font-size: 13px;
+  }
+  .has-answer-bar {
+    padding-bottom: calc(90px + env(safe-area-inset-bottom));
+  }
+  .product:has(.has-answer-bar) .product-footer {
+    padding-bottom: calc(110px + env(safe-area-inset-bottom));
+  }
+  .deadline {
+    flex-wrap: wrap;
+  }
+  .hero-actions {
+    gap: 20px;
+  }
+  .field input,
+  .field textarea {
+    font-size: 16px;
+  }
+  .dialog-content {
+    padding: 22px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

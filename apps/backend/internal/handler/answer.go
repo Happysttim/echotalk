@@ -5,9 +5,9 @@ import (
 	"echotalk/internal/model"
 	"echotalk/internal/response"
 	"echotalk/internal/service"
+	"echotalk/internal/utils"
 	"encoding/base64"
 	"encoding/json"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -39,14 +39,13 @@ func (handler *AnswerHandler) CreateAnswer(c *gin.Context) {
 	payload := new(model.CreateAnswerRequest)
 	userID := c.GetString("userID")
 
-	if userID == "" {
-		log.Println("User ID is empty")
-		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
+	if err := c.ShouldBindJSON(payload); err != nil {
+		response.Failed(c, http.StatusBadRequest, errors.ErrInvalidInput.Error())
 		return
 	}
-	if err := c.ShouldBindJSON(payload); err != nil {
-		log.Println("Error binding JSON: ", err)
-		response.Failed(c, http.StatusUnauthorized, errors.ErrBadRequest.Error())
+
+	if payload.IsAnonymous && strings.TrimSpace(payload.AnswerPassword) == "" {
+		response.Failed(c, http.StatusBadRequest, errors.ErrInvalidInput.Error())
 		return
 	}
 
@@ -54,20 +53,18 @@ func (handler *AnswerHandler) CreateAnswer(c *gin.Context) {
 	survey, err := handler.surveyService.GetSurveyByID(ctx, payload.SurveyID)
 
 	if err != nil || survey == nil {
-		log.Println("Error fetching survey")
 		response.Failed(c, http.StatusNotFound, errors.ErrSurveyNotFound.Error())
 		return
 	}
 
 	if survey.Closed || survey.ExpiresAt.Before(time.Now()) {
-		log.Println("Survey is closed")
 		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 		return
 	}
 
-	answer, err := handler.answerService.CreateAnswer(ctx, payload, userID)
+	payload.AuthorID = userID
+	answer, err := handler.answerService.CreateAnswer(ctx, payload)
 	if err != nil {
-		log.Println("Error creating answer: ", err)
 		response.Failed(c, http.StatusUnauthorized, errors.ErrInternalServer.Error())
 		return
 	}
@@ -81,7 +78,6 @@ func (handler *AnswerHandler) DeleteAnswer(c *gin.Context) {
 	userId := c.GetString("userID")
 
 	if err := c.ShouldBindJSON(payload); err != nil {
-		log.Println("Error binding JSON: ", err)
 		response.Failed(c, http.StatusUnauthorized, errors.ErrBadRequest.Error())
 		return
 	}
@@ -90,18 +86,24 @@ func (handler *AnswerHandler) DeleteAnswer(c *gin.Context) {
 	answer, err := handler.answerService.GetAnswerByID(ctx, payload.AnswerID)
 
 	if err != nil || answer == nil {
-		log.Println("Error fetching answer")
 		response.Failed(c, http.StatusNotFound, errors.ErrAnswerNotFound.Error())
 		return
 	}
 
-	if strings.Compare(answer.AuthorID.Hex(), userId) != 0 {
-		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
-		return
+	if !answer.IsAnonymous {
+		if userId == "" || strings.Compare(answer.AuthorID.Hex(), userId) != 0 {
+			response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
+			return
+		}
+	} else {
+		passwordHash, err := utils.Sha256Hash(payload.AnswerPassword)
+		if err != nil || strings.Compare(answer.AnswerPassword, passwordHash) != 0 {
+			response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
+			return
+		}
 	}
 
 	if err := handler.answerService.DeleteAnswer(ctx, answer.ID.Hex()); err != nil {
-		log.Println("Error deleting answer: ", err)
 		response.Failed(c, http.StatusUnauthorized, errors.ErrInternalServer.Error())
 		return
 	}
@@ -113,7 +115,6 @@ func (handler *AnswerHandler) DeleteAnswer(c *gin.Context) {
 func (handler *AnswerHandler) GetAnswer(c *gin.Context) {
 	answerId := c.Param("answerId")
 	if answerId == "" {
-		log.Println("Answer ID is empty")
 		response.Failed(c, http.StatusUnauthorized, errors.ErrBadRequest.Error())
 		return
 	}
@@ -122,7 +123,6 @@ func (handler *AnswerHandler) GetAnswer(c *gin.Context) {
 	answer, err := handler.answerService.GetAnswerByID(ctx, answerId)
 
 	if err != nil || answer == nil {
-		log.Println("Error fetching answer")
 		response.Failed(c, http.StatusNotFound, errors.ErrAnswerNotFound.Error())
 		return
 	}
@@ -136,12 +136,10 @@ func (handler *AnswerHandler) UpdateAnswer(c *gin.Context) {
 	userID := c.GetString("userID")
 
 	if userID == "" {
-		log.Println("User ID is empty")
 		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
 		return
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		log.Println("Error binding JSON: ", err)
 		response.Failed(c, http.StatusUnauthorized, errors.ErrBadRequest.Error())
 		return
 	}
@@ -150,24 +148,82 @@ func (handler *AnswerHandler) UpdateAnswer(c *gin.Context) {
 	answer, err := handler.answerService.GetAnswerByID(ctx, payload.AnswerID)
 
 	if err != nil || answer == nil {
-		log.Println("Error fetching answer")
 		response.Failed(c, http.StatusNotFound, errors.ErrAnswerNotFound.Error())
 		return
 	}
 
 	if strings.Compare(answer.AuthorID.Hex(), userID) != 0 {
-		log.Println("User ID does not match answer author ID")
 		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
 		return
 	}
 
 	if err := handler.answerService.UpdateAnswer(ctx, payload); err != nil {
-		log.Println("Error updating answer: ", err)
 		response.Failed(c, http.StatusUnauthorized, errors.ErrInternalServer.Error())
 		return
 	}
 
 	response.OK(c, http.StatusOK)
+}
+
+// @Router /answers/me?cursor={string}
+
+func (handler *AnswerHandler) GetMyAnswers(c *gin.Context) {
+	userID := c.GetString("userID")
+	answerID := c.Query("cursor")
+
+	if userID == "" {
+		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
+		return
+	}
+
+	objectID, err := bson.ObjectIDFromHex(userID)
+
+	if err != nil {
+		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
+		return
+	}
+
+	filter := bson.M{"author_id": objectID}
+
+	if answerID != "" {
+		objectID, err := bson.ObjectIDFromHex(answerID)
+		if err != nil {
+			response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
+			return
+		}
+
+		filter["_id"] = bson.M{
+			"$lt": objectID,
+		}
+	}
+
+	ctx := c.Request.Context()
+	answers, err := handler.answerService.GetFilteredAnswers(
+		ctx,
+		filter,
+		options.Find().SetSort(
+			bson.D{
+				{Key: "updated_at", Value: -1},
+				{Key: "_id", Value: -1},
+			},
+		).SetLimit(LimitSmall+1),
+	)
+
+	if err != nil {
+		response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
+		return
+	}
+
+	var nextID string
+	hasNext := len(answers) > LimitSmall
+
+	if hasNext {
+		last := answers[LimitSmall-1]
+		nextID = last.ID.Hex()
+		answers = answers[:LimitSmall]
+	}
+
+	response.OKWithData(c, http.StatusOK, map[string]any{"skip": nextID, "hasNext": hasNext, "answers": answers})
 }
 
 // @Router /answers?cursor={string} [get]
@@ -180,33 +236,28 @@ func (handler *AnswerHandler) GetAnswerFeed(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	if cursorBase64 == "" {
-		log.Println("Cursor is empty")
 		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 		return
 	}
 
 	decodeBytes, err := base64.RawURLEncoding.DecodeString(cursorBase64)
 	if err != nil {
-		log.Println("Error decoding cursor: ", err)
 		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 		return
 	}
 
 	cursor := new(AnswerCursor)
 	if err := json.Unmarshal(decodeBytes, cursor); err != nil {
-		log.Println("Error unmarshaling cursor: ", err)
 		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 		return
 	}
 
 	survey, err = handler.surveyService.GetSurveyByID(ctx, cursor.SurveyID)
 	if err != nil {
-		log.Println("Error fetching survey: ", err)
 		response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
 		return
 	}
 	if survey == nil {
-		log.Println("Survey not found")
 		response.Failed(c, http.StatusNotFound, errors.ErrNotFound.Error())
 		return
 	}
@@ -214,12 +265,10 @@ func (handler *AnswerHandler) GetAnswerFeed(c *gin.Context) {
 	if cursor.AnswerID != "" {
 		answer, err = handler.answerService.GetAnswerByID(ctx, cursor.AnswerID)
 		if err != nil {
-			log.Println("Error fetching answer: ", err)
 			response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
 			return
 		}
 		if answer == nil || answer.SurveyID != survey.ID {
-			log.Println("Answer not found or does not belong to the specified survey")
 			response.Failed(c, http.StatusNotFound, errors.ErrNotFound.Error())
 			return
 		}
@@ -259,9 +308,10 @@ func (handler *AnswerHandler) GetAnswerFeed(c *gin.Context) {
 	nextCursor := AnswerCursor{
 		SurveyID: cursor.SurveyID,
 	}
-	if hasNext && len(answers) > 0 {
-		last := answers[len(answers)-1]
+	if hasNext {
+		last := answers[LimitSmall-1]
 		nextID = last.ID.Hex()
+		answers = answers[:LimitSmall]
 	}
 
 	if nextID != "" {
@@ -271,7 +321,6 @@ func (handler *AnswerHandler) GetAnswerFeed(c *gin.Context) {
 	if nextCursor.AnswerID != "" {
 		jsonBytes, err := json.Marshal(nextCursor)
 		if err != nil {
-			log.Println("Error marshaling next cursor: ", err)
 			response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
 			return
 		}
@@ -287,13 +336,11 @@ func (handler *AnswerHandler) RateUp(c *gin.Context) {
 	userIdString := c.GetString("userID")
 
 	if err := c.ShouldBindJSON(payload); err != nil {
-		log.Println("Error binding JSON: ", err)
 		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 		return
 	}
 
 	if userIdString == "" {
-		log.Println("User ID is empty")
 		response.Failed(c, http.StatusUnauthorized, errors.ErrUnauthorized.Error())
 		return
 	}
@@ -302,13 +349,11 @@ func (handler *AnswerHandler) RateUp(c *gin.Context) {
 	userId, err := bson.ObjectIDFromHex(userIdString)
 
 	if err != nil {
-		log.Println("Error converting user ID to ObjectID: ", err)
 		response.Failed(c, http.StatusUnauthorized, errors.ErrInternalServer.Error())
 		return
 	}
 
 	if err := handler.answerService.RateUp(ctx, payload.AnswerID, userId); err != nil {
-		log.Println("Error rating up answer: ", err)
 		response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 		return
 	}

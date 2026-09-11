@@ -74,7 +74,7 @@ func (handler *VerifyHandler) EmailVerify(c *gin.Context) {
 	}
 
 	uuid := uuid.New().String()
-	if err := mail.SendVerifyEmail(email, uuid, location); err != nil {
+	if err := mail.NewEmail().SendVerifyEmail(email, uuid, location); err != nil {
 		response.Failed(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -124,4 +124,9 @@ func (handler *VerifyHandler) CodeVerify(c *gin.Context) {
 
 	c.SetCookie(VerifyToken, token, VerifyTokenMaxAge, "/", "", false, true)
 	response.OK(c, http.StatusOK)
+}
+
+// @Router /verify/me
+func (handler *VerifyHandler) VerifyMe(c *gin.Context) {
+	response.OKWithData(c, http.StatusOK, c.GetString("email"))
 }
