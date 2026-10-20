@@ -26,6 +26,7 @@
   line-height: 1.45;
 }
 .author-line {
+  flex-wrap: wrap;
   align-items: center;
   gap: 9px;
   font-size: 14px;
@@ -34,6 +35,19 @@
 .author-line time {
   color: #829087;
   margin-left: auto;
+  font-size: 12px;
+}
+.author-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.author-line .avatar,
+.byline .avatar {
+  flex-shrink: 0;
+}
+.author-name .hash {
+  color: var(--muted-foreground);
+  margin-left: 4px;
   font-size: 12px;
 }
 .question-prose {

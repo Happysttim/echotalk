@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { MessageSquare } from 'lucide-react';
 import { answerApi } from '../api/questions';
-import type { Answer } from '../types';
+import { mergeSurveyAnswers } from '../lib/surveyAnswers';
 import { useCursorFeed } from '../hooks/useCursorFeed';
 import { PersonalNavigation } from '../components/layout/PersonalNavigation';
 import { MyAnswerGroup } from '../components/questions/MyAnswerGroup';
@@ -13,21 +13,13 @@ import {
   RetryState,
 } from '../components/ui/Feedback';
 
-export function groupMyAnswers(answers: Answer[]) {
-  const groups = new Map<string, Answer[]>();
-  for (const answer of answers) {
-    const group = groups.get(answer.survey_id) ?? [];
-    group.push(answer);
-    groups.set(answer.survey_id, group);
-  }
-  return [...groups].map(([surveyId, items]) => ({ surveyId, answers: items }));
-}
 export function MyAnswersPage() {
   const feed = useCursorFeed(
     useCallback(
       (cursor: string, signal: AbortSignal) => answerApi.mine(cursor, signal),
       [],
     ),
+    mergeSurveyAnswers,
   );
   return (
     <main id="main-content" className="page-width feed-layout">
@@ -65,8 +57,8 @@ export function MyAnswersPage() {
             onRetry={feed.reload}
           />
         ) : feed.items.length ? (
-          groupMyAnswers(feed.items).map((group) => (
-            <MyAnswerGroup key={group.surveyId} {...group} />
+          feed.items.map((group) => (
+            <MyAnswerGroup key={group.id} survey={group} />
           ))
         ) : (
           <EmptyState title="아직 작성한 답변이 없습니다.">
@@ -80,7 +72,10 @@ export function MyAnswersPage() {
             error={feed.moreError}
             onMore={feed.more}
             label="내 답변 더 보기"
-            count={feed.items.length}
+            count={feed.items.reduce(
+              (sum, group) => sum + group.answers.length,
+              0,
+            )}
           />
         )}
       </section>

@@ -1,6 +1,15 @@
-export function dateText(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '날짜 정보 없음';
+const ZERO_TIME = Date.parse('0001-01-01T00:00:00Z');
+
+function dateTimestamp(value: unknown) {
+  if (typeof value !== 'string' || !value.trim()) return NaN;
+  const time = Date.parse(value);
+  return time === ZERO_TIME ? NaN : time;
+}
+
+export function dateText(value: string | null | undefined) {
+  const time = dateTimestamp(value);
+  if (!Number.isFinite(time)) return '날짜 정보 없음';
+  const date = new Date(time);
   return new Intl.DateTimeFormat('ko-KR', {
     timeZone: 'Asia/Seoul',
     year: 'numeric',
@@ -9,9 +18,9 @@ export function dateText(value: string) {
   }).format(date);
 }
 
-export function toKstInput(value: string) {
-  const time = Date.parse(value);
-  return Number.isNaN(time)
+export function toKstInput(value: string | null | undefined) {
+  const time = dateTimestamp(value);
+  return !Number.isFinite(time)
     ? ''
     : new Date(time + 9 * 60 * 60 * 1000).toISOString().slice(0, 16);
 }
@@ -35,8 +44,10 @@ export function isFutureDeadline(value: string, now = Date.now()) {
   }
 }
 
-export const deadlineText = (value: string) =>
-  `${toKstInput(value).replace('T', ' ')} (KST)`;
+export function deadlineText(value: string | null | undefined) {
+  const input = toKstInput(value);
+  return input ? `${input.replace('T', ' ')} (KST)` : '마감일 정보 없음';
+}
 export const isClosed = (
   survey: { closed: boolean; expires_at: string },
   time = Date.now(),

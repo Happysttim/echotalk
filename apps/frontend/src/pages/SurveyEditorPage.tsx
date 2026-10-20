@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import type { Author } from '../types';
+import { WritingAuthor } from '../components/questions/WritingAuthor';
 import { ArrowLeft, ArrowUpRight } from 'lucide-react';
 import { Switch } from 'radix-ui';
 import { questionApi } from '../api/questions';
@@ -35,6 +37,7 @@ export function SurveyEditorPage({ id }: { id?: string }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [version, setVersion] = useState(0);
+  const [author, setAuthor] = useState<Author | null>(null);
   const time = useClock();
   const validDeadline = isFutureDeadline(expiresAt, time);
   useDirtyForm(
@@ -57,6 +60,7 @@ export function SurveyEditorPage({ id }: { id?: string }) {
         }
         const date = toKstInput(survey.expires_at);
         setTitle(survey.title);
+        setAuthor(survey.author ?? null);
         setContent(survey.content);
         setPublic(survey.is_public);
         setExpiresAt(date);
@@ -138,6 +142,7 @@ export function SurveyEditorPage({ id }: { id?: string }) {
             제목과 내용을 작성하고 공개 여부와 마감일을 설정하세요.
           </p>
           <form
+            aria-label="질문 작성 정보"
             aria-busy={busy}
             onSubmit={(event) => {
               event.preventDefault();
@@ -145,6 +150,7 @@ export function SurveyEditorPage({ id }: { id?: string }) {
             }}
           >
             <fieldset disabled={busy}>
+              <WritingAuthor author={author} />
               <TextField
                 label="제목"
                 value={title}

@@ -17,9 +17,31 @@ export function AnswerRow({
   onDeleted: () => void;
 }) {
   const userId = useSession((state) => state.userId);
-  const [count, setCount] = useState(answer.rate_up);
+  return (
+    <AnswerRowContent
+      key={`${userId}:${answer.id}`}
+      answer={answer}
+      onDeleted={onDeleted}
+    />
+  );
+}
+
+function AnswerRowContent({
+  answer,
+  onDeleted,
+}: {
+  answer: Answer;
+  onDeleted: () => void;
+}) {
+  const userId = useSession((state) => state.userId);
+  const [updatedCount, setUpdatedCount] = useState<{
+    source: Answer;
+    value: number;
+  } | null>(null);
+  const count =
+    updatedCount?.source === answer ? updatedCount.value : answer.rate_up;
   const [busy, setBusy] = useState(false);
-  const [rated, setRated] = useState(false);
+  const rated = useSession((state) => state.ratedAnswers.includes(answer.id));
   const [error, setError] = useState('');
   const owner = !!userId && userId === answer.author_id && !answer.is_anonymous;
   async function rate() {
@@ -32,11 +54,15 @@ export function AnswerRow({
     setError('');
     try {
       await answerApi.rateUp(answer.id);
-      setRated(true);
-      const updated = await answerApi.get(answer.id);
-      setCount(updated.rate_up);
+      useSession.getState().recordRating(userId, answer.id);
+      try {
+        const updated = await answerApi.get(answer.id);
+        setUpdatedCount({ source: answer, value: updated.rate_up });
+      } catch {
+        setError('추천은 완료되었지만 추천 수를 불러오지 못했습니다.');
+      }
     } catch {
-      setError('추천 또는 추천 수 갱신을 처리하지 못했습니다.');
+      setError('추천을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.');
     } finally {
       setBusy(false);
     }
@@ -44,6 +70,7 @@ export function AnswerRow({
   return (
     <article className="answer-row" id={`answer-${answer.id}`} tabIndex={-1}>
       <AuthorLine
+        author={answer.author}
         anonymous={answer.is_anonymous ? answer.anonymous || '익명' : undefined}
         date={answer.created_at}
       />

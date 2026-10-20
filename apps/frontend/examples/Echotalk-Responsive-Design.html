@@ -152,6 +152,14 @@
         ><a href="#s11">12 일반 답변 작성</a><a href="#s12">13 익명 답변 작성</a
         ><a href="#s13">14 질문 작성</a>
       </nav>
+      <p>
+        2026-10-21 상태 보완: 누락·Go 기본 날짜는 ‘날짜 정보 없음’,
+        잘못된 마감일은 ‘마감일 정보 없음’으로 표시합니다.
+        작성 화면은 조회로 확인한 본인 닉네임을 재사용하며, 확인되지 않으면
+        ‘등록 후 내 닉네임으로 표시됩니다.’라고 안내합니다.
+        같은 탭에서 성공한 추천은 새로고침 후에도 ‘추천 완료’로 표시하며
+        로그아웃·계정 전환 시 초기화합니다. 다른 기기의 추천 이력은 서버 지원이 필요합니다.
+      </p>
     </header>
     <main>
       <section id="s0">
@@ -627,7 +635,7 @@
           `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${kind === 'questions' ? '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h8"/>' : '<path d="M21 15a4 4 0 0 1-4 4H7l-4 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"/>'}</svg>`;
         const tabs = (current) =>
           `<nav class="personal-navigation" aria-label="내 활동"><a href="#personal-questions" target="_top" ${current === 'questions' ? 'aria-current="page"' : ''}>${icon('questions')}내가 작성한 질문</a><a href="#personal-answers" target="_top" ${current === 'answers' ? 'aria-current="page"' : ''}>${icon('answers')}내가 작성한 답변</a></nav>`;
-        const answerGroups = `<section class="my-answer-group"><h2><a href="#s8" target="_top">새로운 기술을 배울 때, 어떤 순서로 공부하시나요?</a></h2><ul class="my-answer-list"><li class="my-answer-item"><time>2026. 09. 11.</time><p>작은 결과물을 먼저 정하고 필요한 공식 문서를 읽으며 시작합니다.</p><a href="#s8" target="_top">질문에서 이 답변 보기</a></li><li class="my-answer-item"><time>2026. 09. 10.</time><p>학습한 내용을 기록한 뒤, 이해가 부족한 부분을 다시 실습합니다.</p><a href="#s8" target="_top">질문에서 이 답변 보기</a></li></ul></section><section class="my-answer-group"><h2><a href="#s8" target="_top">집중이 잘되는 작업 환경은 어떤 모습인가요?</a></h2><ul class="my-answer-list"><li class="my-answer-item"><time>2026. 09. 09.</time><p>책상 위에는 지금 할 일에 필요한 물건만 두는 편입니다.</p><a href="#s8" target="_top">질문에서 이 답변 보기</a></li></ul></section>`;
+        const answerGroups = `<section class="my-answer-group"><h2><a href="#s8" target="_top">새로운 기술을 배울 때, 어떤 순서로 공부하시나요?</a></h2><ul class="my-answer-list"><li class="my-answer-item"><time>2026. 09. 11.</time><p>작은 결과물을 먼저 정하고 필요한 공식 문서를 읽으며 시작합니다.</p></li><li class="my-answer-item"><time>2026. 09. 10.</time><p>학습한 내용을 기록한 뒤, 이해가 부족한 부분을 다시 실습합니다.</p></li></ul></section><section class="my-answer-group"><h2><a href="#s8" target="_top">집중이 잘되는 작업 환경은 어떤 모습인가요?</a></h2><ul class="my-answer-list"><li class="my-answer-item"><time>2026. 09. 09.</time><p>책상 위에는 지금 할 일에 필요한 물건만 두는 편입니다.</p></li></ul></section>`;
         for (const [kind, title, number] of [
           ['questions', '내가 작성한 질문', '15'],
           ['answers', '내가 작성한 답변', '16'],
@@ -640,7 +648,7 @@
           note.textContent =
             kind === 'questions'
               ? '/my/questions · GET /surveys/me · 인증 필요 · 현재 서버는 공개 질문만 반환합니다.'
-              : '/my/answers · GET /answers/me · 인증 필요 · 질문별 그룹, 페이지 추가 시 같은 그룹에 합칩니다. 질문 제목 조회 실패 시에도 답변은 유지합니다.';
+              : '/my/answers · GET /answers/me · answers[].survey_answers의 제목과 답변을 표시합니다. 제목 추가 조회 없이 페이지별 그룹을 병합하며 답변의 author.nickname과 hash_number를 표시합니다.';
           section.querySelector('h2').after(note);
           const picker = document.createElement('select');
           picker.setAttribute('aria-label', `${title} 시안 상태`);
@@ -707,7 +715,7 @@
                   '최신순';
                 feed.querySelectorAll('.byline').forEach((byline) => {
                   byline.innerHTML =
-                    '<span class="avatar" aria-hidden="true">나</span><span>나</span>';
+                    '<span class="avatar" aria-hidden="true">서</span><span>서윤<span class="hash">#10000001</span></span>';
                 });
               }
               if (picker.value !== 'default') {
@@ -725,6 +733,12 @@
                   `<section class="empty-state"><h2>${message}</h2></section>`;
               }
               const style = doc.createElement('style');
+              doc.querySelectorAll('.my-answer-item time').forEach((time) => {
+                time.insertAdjacentHTML(
+                  'beforebegin',
+                  '<div class="byline"><span class="avatar" aria-hidden="true">서</span><span>서윤<span class="hash">#10000001</span></span></div>',
+                );
+              });
               style.textContent = extraCss;
               doc.head.append(style);
               frame.title = `${title} ${frame.closest('.frame-wrap').dataset.width}px`;

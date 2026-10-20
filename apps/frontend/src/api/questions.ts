@@ -1,4 +1,10 @@
-import type { Answer, Page, Survey } from '../types';
+import type {
+  Answer,
+  MyAnswerDetail,
+  Page,
+  Survey,
+  SurveyAnswers,
+} from '../types';
 import { ApiError, jsonBody, request } from './client';
 
 export function encodeCursor(value: Record<string, string>) {
@@ -80,10 +86,10 @@ export const questionApi = {
     ),
 };
 export const answerApi = {
-  async mine(cursor = '', signal?: AbortSignal): Promise<Page<Answer>> {
+  async mine(cursor = '', signal?: AbortSignal): Promise<Page<SurveyAnswers>> {
     // /answers/me takes a plain answer ID, not the public feed's base64 cursor.
     const data = await request<{
-      answers: Answer[] | null;
+      answers: MyAnswerDetail[] | null;
       skip: string;
       hasNext: boolean;
     }>(
@@ -92,7 +98,10 @@ export const answerApi = {
       'required',
     );
     return {
-      items: data.answers ?? [],
+      items: (data.answers ?? []).map(({ survey_answers }) => ({
+        ...survey_answers,
+        answers: survey_answers.answers ?? [],
+      })),
       nextCursor: data.skip,
       hasNext: data.hasNext,
     };

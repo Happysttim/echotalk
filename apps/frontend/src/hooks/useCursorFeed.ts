@@ -17,6 +17,7 @@ export function appendUnique<T extends { id: string }>(
 }
 export function useCursorFeed<T extends { id: string }>(
   loadPage: (cursor: string, signal: AbortSignal) => Promise<Page<T>>,
+  merge: (old: T[], incoming: T[]) => T[] = appendUnique,
 ) {
   const [items, setItems] = useState<T[]>([]);
   const [status, setStatus] = useState<'loading' | 'error' | 'done'>('loading');
@@ -49,7 +50,7 @@ export function useCursorFeed<T extends { id: string }>(
           controller.current.signal,
         );
         if (current !== generation.current) return;
-        setItems((old) => appendUnique(more ? old : [], page.items));
+        setItems((old) => merge(more ? old : [], page.items));
         cursor.current = page.nextCursor;
         setHasNext(page.hasNext && !!page.nextCursor);
         setStatus('done');
@@ -71,7 +72,7 @@ export function useCursorFeed<T extends { id: string }>(
         }
       }
     },
-    [loadPage],
+    [loadPage, merge],
   );
   useEffect(() => {
     void load(false);

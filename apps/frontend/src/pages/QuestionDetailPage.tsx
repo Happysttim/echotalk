@@ -103,7 +103,7 @@ export function QuestionDetailPage({ id }: { id: string }) {
             </span>
           </div>
           <h1 tabIndex={-1}>{survey.title}</h1>
-          <AuthorLine date={survey.created_at} />
+          <AuthorLine author={survey.author} date={survey.created_at} />
           <div className="question-prose prose">{survey.content}</div>
           <p className="deadline">
             <CalendarDays size={16} aria-hidden />

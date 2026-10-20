@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { Author } from '../types';
 import { ArrowLeft, ArrowUpRight } from 'lucide-react';
 import { answerApi } from '../api/questions';
 import { errorText } from '../api/client';
@@ -9,7 +10,7 @@ import { useSession } from '../stores/session';
 import { useNavigation } from '../stores/navigation';
 import { isClosed } from '../lib/date';
 import { go, loginPath } from '../lib/navigation';
-import { AuthorLine } from '../components/questions/QuestionRow';
+import { WritingAuthor } from '../components/questions/WritingAuthor';
 import { AppLink, Button, LinkButton } from '../components/ui/Button';
 import {
   PasswordField,
@@ -43,6 +44,7 @@ export function AnswerComposerPage({
   const [ready, setReady] = useState(!editId);
   const [busy, setBusy] = useState(false);
   const [version, setVersion] = useState(0);
+  const [author, setAuthor] = useState<Author | null>(null);
   useDirtyForm(ready && (content !== initial || !!name || !!password));
   useEffect(() => {
     if (!editId) return;
@@ -61,6 +63,7 @@ export function AnswerComposerPage({
           return;
         }
         setContent(answer.content);
+        setAuthor(answer.author ?? null);
         setInitial(answer.content);
         setReady(true);
       })
@@ -150,10 +153,7 @@ export function AnswerComposerPage({
             </AppLink>
           </section>
           {!anonymous && (
-            <div className="writing-author">
-              <span>내 계정으로 작성</span>
-              <AuthorLine />
-            </div>
+            <WritingAuthor author={editId ? author : survey.author} />
           )}
           <form
             aria-busy={busy}
