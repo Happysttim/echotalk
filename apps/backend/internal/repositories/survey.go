@@ -10,7 +10,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type SurveyRepository interface {
@@ -20,7 +19,8 @@ type SurveyRepository interface {
 	CheckExpires(ctx context.Context) error
 	Delete(ctx context.Context, id string) error
 	FindAll(ctx context.Context) ([]*model.Survey, error)
-	FindByFilter(ctx context.Context, filter bson.M, opts ...options.Lister[options.FindOptions]) ([]*model.Survey, error)
+	FindDetailByID(ctx context.Context, id string) (*model.SurveyDetail, error)
+	FindByFilter(ctx context.Context, filter bson.D, sort bson.D, limit int64) ([]*model.SurveyDetail, error)
 }
 
 type MongoSurveyRepository struct {
@@ -95,21 +95,52 @@ func (r *MongoSurveyRepository) Delete(ctx context.Context, id string) error {
 	return err
 }
 
-func (r *MongoSurveyRepository) FindByFilter(ctx context.Context, filter bson.M, opts ...options.Lister[options.FindOptions]) ([]*model.Survey, error) {
-	cursor, err := r.collection.Find(ctx, filter, opts...)
+func (r *MongoSurveyRepository) FindByFilter(ctx context.Context, filter bson.D, sort bson.D, limit int64) ([]*model.SurveyDetail, error) {
+	cursor, err := r.collection.Aggregate(ctx, r.pipeline(filter, sort, limit))
 	if err != nil {
 		return nil, err
 	}
 
 	defer cursor.Close(ctx)
 
-	surveys := make([]*model.Survey, 0)
+	surveys := make([]*model.SurveyDetail, 0)
 
 	if err := cursor.All(ctx, &surveys); err != nil {
 		return nil, err
 	}
 
 	return surveys, nil
+}
+
+func (r *MongoSurveyRepository) FindDetailByID(ctx context.Context, id string) (*model.SurveyDetail, error) {
+	objectID, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, err
+	}
+
+	cursor, err := r.collection.Aggregate(ctx, r.pipeline(
+		bson.D{{Key: "_id", Value: objectID}},
+		bson.D{},
+		1,
+	))
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var survey model.SurveyDetail
+	if !cursor.Next(ctx) {
+		if err := cursor.Err(); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+
+	if err := cursor.Decode(&survey); err != nil {
+		return nil, err
+	}
+
+	return &survey, nil
 }
 
 func (r *MongoSurveyRepository) FindAll(ctx context.Context) ([]*model.Survey, error) {
@@ -125,4 +156,38 @@ func (r *MongoSurveyRepository) FindAll(ctx context.Context) ([]*model.Survey, e
 		return nil, err
 	}
 	return surveys, nil
+}
+
+func (r *MongoSurveyRepository) pipeline(match bson.D, sort bson.D, limit int64) mongo.Pipeline {
+	pipeline := mongo.Pipeline{
+		{
+			{Key: "$match", Value: match},
+		},
+	}
+
+	if len(sort) > 0 {
+		pipeline = append(pipeline, bson.D{
+			{Key: "$sort", Value: sort},
+		})
+	}
+
+	if limit > 0 {
+		pipeline = append(pipeline, bson.D{
+			{Key: "$limit", Value: limit},
+		})
+	}
+
+	lookupStage := bson.D{{Key: "$lookup", Value: bson.D{
+		{Key: "from", Value: config.CollectionUser},
+		{Key: "localField", Value: "author_id"},
+		{Key: "foreignField", Value: "_id"},
+		{Key: "as", Value: "author"},
+	}}}
+	unwindStage := bson.D{{Key: "$unwind", Value: bson.D{
+		{Key: "path", Value: "$author"},
+		{Key: "preserveNullAndEmptyArrays", Value: true},
+	}}}
+	pipeline = append(pipeline, lookupStage, unwindStage)
+
+	return pipeline
 }

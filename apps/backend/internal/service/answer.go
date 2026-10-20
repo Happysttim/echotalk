@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type AnswerService struct {
@@ -75,19 +74,27 @@ func (s *AnswerService) CreateAnswer(ctx context.Context, payload *model.CreateA
 	return s.answerRepo.Create(ctx, doc)
 }
 
-func (s *AnswerService) GetAnswerByID(ctx context.Context, answerID string) (*model.Answer, error) {
+func (s *AnswerService) GetAnswerByID(ctx context.Context, answerID string) (*model.AnswerDetail, error) {
 	if answerID == "" {
 		return nil, errors.ErrInvalidInput
 	}
 
-	answer, err := s.answerRepo.FindByID(ctx, answerID)
+	answer, err := s.answerRepo.FindDetailByID(ctx, answerID)
 	if err != nil {
 		return nil, err
 	}
 	return answer, nil
 }
 
-func (s *AnswerService) GetAnswersBySurvey(ctx context.Context, surveyID string) ([]*model.Answer, error) {
+func (s *AnswerService) GetRawAnswerByID(ctx context.Context, answerID string) (*model.Answer, error) {
+	if answerID == "" {
+		return nil, errors.ErrInvalidInput
+	}
+
+	return s.answerRepo.FindByID(ctx, answerID)
+}
+
+func (s *AnswerService) GetAnswersBySurvey(ctx context.Context, surveyID string) ([]*model.AnswerDetail, error) {
 	if surveyID == "" {
 		return nil, errors.ErrInvalidAnswer
 	}
@@ -100,23 +107,20 @@ func (s *AnswerService) GetAnswersBySurvey(ctx context.Context, surveyID string)
 	return answers, nil
 }
 
-func (s *AnswerService) GetFilteredAnswers(ctx context.Context, filter bson.M, opts ...options.Lister[options.FindOptions]) ([]*model.Answer, error) {
+func (s *AnswerService) GetFilteredAnswers(ctx context.Context, filter bson.D, sort bson.D, limit int64) ([]*model.AnswerDetail, error) {
 	if filter == nil {
 		return nil, errors.ErrInvalidInput
 	}
 
-	var m bson.M
-	marshal, err := bson.Marshal(filter)
+	return s.answerRepo.FindByFilter(ctx, filter, sort, limit)
+}
 
-	if err != nil {
+func (s *AnswerService) GetMyAnswerDetails(ctx context.Context, filter bson.D, sort bson.D, limit int64) ([]*model.MyAnswerDetail, error) {
+	if filter == nil {
 		return nil, errors.ErrInvalidInput
 	}
 
-	if err := bson.Unmarshal(marshal, &m); err != nil {
-		return nil, errors.ErrInvalidInput
-	}
-
-	return s.answerRepo.FindByFilter(ctx, m, opts...)
+	return s.answerRepo.FindMyAnswerDetails(ctx, filter, sort, limit)
 }
 
 func (s *AnswerService) UpdateAnswer(ctx context.Context, payload *model.UpdateAnswerRequest) error {

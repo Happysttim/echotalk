@@ -34,6 +34,12 @@ type User struct {
 	UpdatedAt    time.Time     `bson:"updated_at"`
 }
 
+type UserSummary struct {
+	ID         bson.ObjectID `json:"id" bson:"_id"`
+	Nickname   string        `json:"nickname" bson:"nickname"`
+	HashNumber int64         `json:"hash_number" bson:"hash_number"`
+}
+
 type LocalAuthRegisterRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`

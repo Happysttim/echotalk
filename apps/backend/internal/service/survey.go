@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type SurveyKeyword string
@@ -47,6 +46,8 @@ func (s *SurveyService) CreateSurvey(ctx context.Context, payload *model.CreateS
 		IsPublic:  payload.IsPublic,
 		Closed:    false,
 		ExpiresAt: payload.ExpiresAt,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 	return s.surveyRepo.Create(ctx, doc)
 }
@@ -66,23 +67,28 @@ func (s *SurveyService) GetSurveyByID(ctx context.Context, surveyID string) (*mo
 	return survey, nil
 }
 
-func (s *SurveyService) GetFilteredSurveys(ctx context.Context, filter bson.M, opts ...options.Lister[options.FindOptions]) ([]*model.Survey, error) {
+func (s *SurveyService) GetSurveyDetailByID(ctx context.Context, surveyID string) (*model.SurveyDetail, error) {
+	if surveyID == "" {
+		return nil, errors.ErrInvalidInput
+	}
+
+	survey, err := s.surveyRepo.FindDetailByID(ctx, surveyID)
+	if err != nil {
+		return nil, err
+	}
+	if survey == nil {
+		return nil, errors.ErrSurveyNotFound
+	}
+
+	return survey, nil
+}
+
+func (s *SurveyService) GetFilteredSurveys(ctx context.Context, filter bson.D, sort bson.D, limit int64) ([]*model.SurveyDetail, error) {
 	if filter == nil {
 		return nil, errors.ErrInvalidInput
 	}
 
-	var m bson.M
-	marshal, err := bson.Marshal(filter)
-
-	if err != nil {
-		return nil, errors.ErrInvalidInput
-	}
-
-	if err := bson.Unmarshal(marshal, &m); err != nil {
-		return nil, errors.ErrInvalidInput
-	}
-
-	return s.surveyRepo.FindByFilter(ctx, m, opts...)
+	return s.surveyRepo.FindByFilter(ctx, filter, sort, limit)
 }
 
 func (s *SurveyService) GetAllSurveys(ctx context.Context) ([]*model.Survey, error) {

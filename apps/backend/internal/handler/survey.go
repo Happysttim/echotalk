@@ -16,7 +16,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type SurveyCursor struct {
@@ -117,7 +116,7 @@ func (handler *SurveyHandler) GetSurvey(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	survey, err := handler.surveyService.GetSurveyByID(ctx, surveyId)
+	survey, err := handler.surveyService.GetSurveyDetailByID(ctx, surveyId)
 
 	if err != nil {
 		response.Failed(c, http.StatusInternalServerError, errors.ErrInternalServer.Error())
@@ -177,7 +176,7 @@ func (handler *SurveyHandler) surveyPage(c *gin.Context, me bool) {
 	cursorBase64 := c.Query("cursor")
 	limit := c.Query("limit")
 
-	filter := bson.M{"is_public": true}
+	filter := bson.D{{Key: "is_public", Value: true}}
 	sort := bson.D{}
 
 	if me {
@@ -189,7 +188,7 @@ func (handler *SurveyHandler) surveyPage(c *gin.Context, me bool) {
 			return
 		}
 
-		filter["author_id"] = objectID
+		filter = append(filter, bson.E{Key: "author_id", Value: objectID})
 	}
 
 	if !slices.Contains(SurveyTypes, findType) {
@@ -233,7 +232,7 @@ func (handler *SurveyHandler) surveyPage(c *gin.Context, me bool) {
 				return
 			}
 
-			filter["$or"] = bson.A{
+			filter = append(filter, bson.E{Key: "$or", Value: bson.A{
 				bson.M{
 					"updated_at": updatedAt,
 					"_id": bson.M{
@@ -245,16 +244,14 @@ func (handler *SurveyHandler) surveyPage(c *gin.Context, me bool) {
 						"$lt": updatedAt,
 					},
 				},
-			}
+			}})
 		} else {
 			surveyID, err := bson.ObjectIDFromHex(cursor.SurveyID)
 			if err != nil {
 				response.Failed(c, http.StatusBadRequest, errors.ErrBadRequest.Error())
 				return
 			}
-			filter["_id"] = bson.M{
-				"$lt": surveyID,
-			}
+			filter = append(filter, bson.E{Key: "_id", Value: bson.M{"$lt": surveyID}})
 		}
 	}
 
@@ -272,7 +269,8 @@ func (handler *SurveyHandler) surveyPage(c *gin.Context, me bool) {
 	surveys, err := handler.surveyService.GetFilteredSurveys(
 		ctx,
 		filter,
-		options.Find().SetSort(sort).SetLimit(int64(limitNumber)+1),
+		sort,
+		int64(limitNumber)+1,
 	)
 
 	if err != nil {

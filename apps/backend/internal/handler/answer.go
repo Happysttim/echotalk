@@ -14,7 +14,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type AnswerCursor struct {
@@ -83,7 +82,7 @@ func (handler *AnswerHandler) DeleteAnswer(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	answer, err := handler.answerService.GetAnswerByID(ctx, payload.AnswerID)
+	answer, err := handler.answerService.GetRawAnswerByID(ctx, payload.AnswerID)
 
 	if err != nil || answer == nil {
 		response.Failed(c, http.StatusNotFound, errors.ErrAnswerNotFound.Error())
@@ -183,7 +182,7 @@ func (handler *AnswerHandler) GetMyAnswers(c *gin.Context) {
 		return
 	}
 
-	filter := bson.M{"author_id": objectID}
+	filter := bson.D{{Key: "author_id", Value: objectID}}
 
 	if answerID != "" {
 		objectID, err := bson.ObjectIDFromHex(answerID)
@@ -192,21 +191,15 @@ func (handler *AnswerHandler) GetMyAnswers(c *gin.Context) {
 			return
 		}
 
-		filter["_id"] = bson.M{
-			"$lt": objectID,
-		}
+		filter = append(filter, bson.E{Key: "_id", Value: bson.M{"$lt": objectID}})
 	}
 
 	ctx := c.Request.Context()
-	answers, err := handler.answerService.GetFilteredAnswers(
+	answers, err := handler.answerService.GetMyAnswerDetails(
 		ctx,
 		filter,
-		options.Find().SetSort(
-			bson.D{
-				{Key: "updated_at", Value: -1},
-				{Key: "_id", Value: -1},
-			},
-		).SetLimit(LimitSmall+1),
+		bson.D{{Key: "updated_at", Value: -1}, {Key: "_id", Value: -1}},
+		LimitSmall+1,
 	)
 
 	if err != nil {
@@ -219,7 +212,9 @@ func (handler *AnswerHandler) GetMyAnswers(c *gin.Context) {
 
 	if hasNext {
 		last := answers[LimitSmall-1]
-		nextID = last.ID.Hex()
+		if len(last.Survey.Answers) > 0 {
+			nextID = last.Survey.Answers[len(last.Survey.Answers)-1].ID.Hex()
+		}
 		answers = answers[:LimitSmall]
 	}
 
@@ -230,8 +225,8 @@ func (handler *AnswerHandler) GetMyAnswers(c *gin.Context) {
 func (handler *AnswerHandler) GetAnswerFeed(c *gin.Context) {
 	cursorBase64 := c.Query("cursor")
 	var survey *model.Survey
-	var answer *model.Answer
-	var answers []*model.Answer
+	var answer *model.AnswerDetail
+	var answers []*model.AnswerDetail
 	var err error
 	ctx := c.Request.Context()
 
@@ -274,31 +269,16 @@ func (handler *AnswerHandler) GetAnswerFeed(c *gin.Context) {
 		}
 		answers, err = handler.answerService.GetFilteredAnswers(
 			ctx,
-			bson.M{
-				"_id": bson.M{
-					"$lt": answer.ID,
-				},
-				"survey_id": survey.ID,
-			},
-			options.Find().SetSort(
-				bson.D{
-					{Key: "_id", Value: -1},
-					{Key: "rate_up", Value: -1},
-				},
-			).SetLimit(LimitSmall+1),
+			bson.D{{Key: "_id", Value: bson.M{"$lt": answer.ID}}, {Key: "survey_id", Value: survey.ID}},
+			bson.D{{Key: "_id", Value: -1}, {Key: "rate_up", Value: -1}},
+			LimitSmall+1,
 		)
 	} else {
 		answers, err = handler.answerService.GetFilteredAnswers(
 			ctx,
-			bson.M{
-				"survey_id": survey.ID,
-			},
-			options.Find().SetSort(
-				bson.D{
-					{Key: "_id", Value: -1},
-					{Key: "rate_up", Value: -1},
-				},
-			).SetLimit(LimitSmall+1),
+			bson.D{{Key: "survey_id", Value: survey.ID}},
+			bson.D{{Key: "_id", Value: -1}, {Key: "rate_up", Value: -1}},
+			LimitSmall+1,
 		)
 	}
 
